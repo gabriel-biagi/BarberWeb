@@ -19,6 +19,8 @@ namespace BarberWeb.Domain.Entities
         [StringLength(maximumLength: 15, MinimumLength = 10, ErrorMessage = "Phone number must be between 10 and 15 characters.")]
         public string PhoneNumber { get; private set; }
 
+        public List<SchedulingHours> SchedulingHours { get; private set; }
+
 
         public Customer(string name, string email, string phoneNumber)
         {

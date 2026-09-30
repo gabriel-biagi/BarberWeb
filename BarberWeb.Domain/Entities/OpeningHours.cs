@@ -1,4 +1,5 @@
 ﻿
+using BarberWeb.Domain.Exception;
 using System.ComponentModel.DataAnnotations;
 
 namespace BarberWeb.Domain.Entities
@@ -21,6 +22,11 @@ namespace BarberWeb.Domain.Entities
 
         public OpeningHours(Professional professional, DayOfWeek dayOfWeek, TimeOnly startTime, TimeOnly endTime)
         {
+            if (endTime <= startTime)
+            {
+                throw new BusinessException("End date cannot be less than start date");
+            }
+
             Professional = professional;
             DayOfWeek = dayOfWeek;
             StartTime = startTime;
