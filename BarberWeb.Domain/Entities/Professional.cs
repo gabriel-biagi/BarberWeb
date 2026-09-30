@@ -19,7 +19,9 @@ namespace BarberWeb.Domain.Entities
         [StringLength(maximumLength: 15, MinimumLength = 10, ErrorMessage = "Phone number must be between 10 and 15 characters.")]
         public string PhoneNumber { get; private set; }
 
-        public Professional(string name, string email, string phoneNumber)
+        public List<Service> Services { get; private set; }
+
+        public Professional(string name, string email, string phoneNumber, List<Service> services)
         {
             if (CheckValidName(name))
             {
@@ -36,9 +38,14 @@ namespace BarberWeb.Domain.Entities
                 throw new ArgumentException("Phone Number must be between 10 and 15 characters.");
             }
 
+            if (CheckValidServices(services))
+            {
+                throw new ArgumentException("Cannot be without registered services");
+            }
             Name = name;
             Email = email;
             PhoneNumber = phoneNumber;
+            Services = services;
         }
 
         
@@ -55,6 +62,11 @@ namespace BarberWeb.Domain.Entities
         private bool CheckValidPhoneNumber(string phoneNumber)
         {
             return (string.IsNullOrWhiteSpace(phoneNumber) || phoneNumber.Length < 10 || phoneNumber.Length > 15);
+        }
+
+        private bool CheckValidServices(List<Service> services)
+        {
+            return (services is null or { Count: 0});
         }
     }
 }
