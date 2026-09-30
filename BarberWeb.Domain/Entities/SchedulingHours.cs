@@ -1,6 +1,5 @@
 ﻿
 using BarberWeb.Domain.Exception;
-using System.ComponentModel.DataAnnotations;
 
 namespace BarberWeb.Domain.Entities
 {
@@ -8,19 +7,14 @@ namespace BarberWeb.Domain.Entities
     {
         public int Id { get; set; }
 
-        [Required]
         public Customer Customer { get; private set; }
 
-        [Required]
         public Professional Professional { get; private set; }
 
-        [Required]
         public DateTimeOffset StartDate { get; private set; }
 
-        [Required]
         public DateTimeOffset EndDate { get; private set; }
 
-        [Required]
         public Service Service { get; private set; }
 
         public SchedulingHours(Customer customer, Professional professional, Service service, DateTimeOffset startDate, DateTimeOffset endDate)
@@ -29,6 +23,10 @@ namespace BarberWeb.Domain.Entities
             {
                 throw new BusinessException("End date cannot be less than start date");
             }
+
+            ArgumentNullException.ThrowIfNull(customer);
+            ArgumentNullException.ThrowIfNull(professional);
+            ArgumentNullException.ThrowIfNull(service);
 
             Customer = customer;
             Professional = professional;
