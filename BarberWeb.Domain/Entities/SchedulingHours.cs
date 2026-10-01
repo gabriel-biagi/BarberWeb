@@ -8,14 +8,17 @@ namespace BarberWeb.Domain.Entities
         public int Id { get; set; }
 
         public Customer Customer { get; private set; }
+        public int CustomerId { get; private set; }
 
         public Professional Professional { get; private set; }
+        public int ProfessionalId { get; private set; }
 
         public DateTimeOffset StartDate { get; private set; }
 
         public DateTimeOffset EndDate { get; private set; }
 
         public Service Service { get; private set; }
+        public int ServiceId { get; private set; }
 
         public SchedulingHours(Customer customer, Professional professional, Service service, DateTimeOffset startDate, DateTimeOffset endDate)
         {
@@ -33,6 +36,10 @@ namespace BarberWeb.Domain.Entities
             Service = service;
             StartDate = startDate;
             EndDate = endDate;
+
+            CustomerId = customer.Id;
+            ProfessionalId = professional.Id;
+            ServiceId = service.Id;
         }
     }
 }
