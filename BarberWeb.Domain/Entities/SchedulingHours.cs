@@ -10,17 +10,16 @@ namespace BarberWeb.Domain.Entities
         public Customer Customer { get; private set; }
         public int CustomerId { get; private set; }
 
-        public Professional Professional { get; private set; }
-        public int ProfessionalId { get; private set; }
-
         public DateTimeOffset StartDate { get; private set; }
 
         public DateTimeOffset EndDate { get; private set; }
 
-        public Service Service { get; private set; }
-        public int ServiceId { get; private set; }
+        public ProfessionalServiceOffering ProfessionalServiceOffering { get; private set; }
+        public int ProfessionalServiceOfferingId { get; private set; }
 
-        public SchedulingHours(Customer customer, Professional professional, Service service, DateTimeOffset startDate, DateTimeOffset endDate)
+        public int ProfessionalId { get; private set; } // EF Core não permite índice único com navegação; necessário para constraint em OnModelCreating
+
+        public SchedulingHours(Customer customer, ProfessionalServiceOffering professionalServiceOffering, DateTimeOffset startDate, DateTimeOffset endDate)
         {
             if (endDate <= startDate)
             {
@@ -28,18 +27,16 @@ namespace BarberWeb.Domain.Entities
             }
 
             ArgumentNullException.ThrowIfNull(customer);
-            ArgumentNullException.ThrowIfNull(professional);
-            ArgumentNullException.ThrowIfNull(service);
+            ArgumentNullException.ThrowIfNull(professionalServiceOffering);
 
             Customer = customer;
-            Professional = professional;
-            Service = service;
+            ProfessionalServiceOffering = professionalServiceOffering;
             StartDate = startDate;
             EndDate = endDate;
 
             CustomerId = customer.Id;
-            ProfessionalId = professional.Id;
-            ServiceId = service.Id;
+            ProfessionalServiceOfferingId = professionalServiceOffering.Id;
+            ProfessionalId = professionalServiceOffering.ProfessionalId;
         }
     }
 }
