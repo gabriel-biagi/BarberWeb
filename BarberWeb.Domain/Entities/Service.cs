@@ -9,9 +9,7 @@ namespace BarberWeb.Domain.Entities
 
         public string Description { get; private set; }
 
-        public decimal Price { get; private set; }
-
-        public Service(string name, string description, decimal price)
+        public Service(string name, string description)
         {
             if (CheckInvalidName(name))
             {
@@ -23,14 +21,9 @@ namespace BarberWeb.Domain.Entities
                 throw new ArgumentException("Description must be between 5 and 200 characters.");
             }
 
-            if (CheckInvalidPrice(price))
-            {
-                throw new ArgumentException("Price must be between 0.01 and 9999.99");
-            }
-
             Name = name;
             Description = description;
-            Price = price;
+
         }
 
         private bool CheckInvalidName(string field)
@@ -41,11 +34,6 @@ namespace BarberWeb.Domain.Entities
         private bool CheckInvalidDescription(string desc)
         {
             return (string.IsNullOrWhiteSpace(desc) || desc.Length < 5 || desc.Length > 200);
-        }
-
-        private bool CheckInvalidPrice(decimal price)
-        {
-            return (price < 0.01m || price > 9999.99m);
         }
     }
 }
