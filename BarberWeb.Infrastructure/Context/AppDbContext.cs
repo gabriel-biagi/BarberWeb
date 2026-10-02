@@ -13,6 +13,7 @@ namespace BarberWeb.Infrastructure.Context
         public DbSet<Customer> Customers { get; set; }
         public DbSet<Professional> Professionals { get; set; }
         public DbSet<SchedulingHours> Appointments { get; set; }
+        public DbSet<ProfessionalServiceOffering> ProfessionalOfferings { get; set; }
         public DbSet<OpeningHours> OpeningHours { get; set; }
         public DbSet<Service> Services { get; set; }
 

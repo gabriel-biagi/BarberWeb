@@ -9,6 +9,7 @@ namespace BarberWeb.Domain.Entities
 
         public Professional Professional { get; private set; }
 
+        public int ProfessionalId { get; private set; }
         public DayOfWeek DayOfWeek { get; private set; }
 
         public TimeOnly StartTime { get; private set; }
