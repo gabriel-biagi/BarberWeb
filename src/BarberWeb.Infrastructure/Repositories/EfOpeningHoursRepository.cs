@@ -16,12 +16,12 @@ namespace BarberWeb.Infrastructure.Repositories
 
         public async Task<IEnumerable<OpeningHours>> GetOpeningHoursOfTheProfessionalByDay(int professionalId, DayOfWeek dayOfWeek)
         {
-            var OpeningHours = await _context.OpeningHours.Include(o => o.Professional)
+            var openingHours = await _context.OpeningHours.Include(o => o.Professional)
                 .Where(o => o.ProfessionalId == professionalId)
                 .Where(o => o.DayOfWeek == dayOfWeek)
                 .ToListAsync();
 
-            return OpeningHours;
+            return openingHours;
         }
     }
 }

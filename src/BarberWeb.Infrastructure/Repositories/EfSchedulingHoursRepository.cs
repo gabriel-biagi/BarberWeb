@@ -16,16 +16,16 @@ namespace BarberWeb.Infrastructure.Repositories
 
         public async Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset date)
         {
-            DateTimeOffset StartOfTheDay = date.Date;
-            DateTimeOffset StartOfTheNextDay = StartOfTheDay.AddDays(1);
+            DateTimeOffset startOfTheDay = date.Date;
+            DateTimeOffset startOfTheNextDay = startOfTheDay.AddDays(1);
 
-                 var SchedulingHours = await _context.SchedulingHours.Include(s => s.Professional)
+                 var schedulingHours = await _context.Appointments.Include(s => s.ProfessionalServiceOffering)
                 .Where(s => s.ProfessionalId == professionalId)
-                .Where(s => s.StartDate >= StartOfTheDay)
-                .Where(s => s.StartDate < StartOfTheNextDay)
+                .Where(s => s.StartDate >= startOfTheDay)
+                .Where(s => s.StartDate < startOfTheNextDay)
                 .ToListAsync();
 
-            return SchedulingHours;
+            return schedulingHours;
         }
     }
 }
