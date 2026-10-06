@@ -30,20 +30,27 @@ public class AvailableHoursService : IAvailableHoursService
         }
 
         List<AvailableSlotDto> availableSlotsDto = new List<AvailableSlotDto>();
-        
+        TimeSpan duration = professionalServiceOffering.Value;
+
         foreach (var bloco in openingHours)
         {
-            TimeOnly start = bloco.StartTime;
-            TimeOnly end = bloco.EndTime;
-            
-            while (start.Add(professionalServiceOffering.Value) <= bloco.EndTime)
+            TimeOnly currentStart = bloco.StartTime;
+            while (currentStart.Add(duration) <= bloco.EndTime)
             {
-                availableSlotsDto.Add(start);
-                end = end.Add(professionalServiceOffering.Value);
-                start = start.Add(professionalServiceOffering.Value);
+                TimeOnly currentEnd = currentStart.Add(duration);
+
+                bool isOccupied = schedulingHours.Any(s => currentStart < TimeOnly.FromDateTime(s.EndDate.DateTime)
+                                                           && currentEnd > TimeOnly.FromDateTime(s.StartDate.DateTime));
+
+                if (!isOccupied)
+                {
+                    availableSlotsDto.Add(new AvailableSlotDto(currentStart, currentEnd));
+                }
+
+                currentStart = currentEnd;
             }
         }
         
-        
+        return availableSlotsDto;
     }
 }
