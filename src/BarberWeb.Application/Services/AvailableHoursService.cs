@@ -31,10 +31,11 @@ public class AvailableHoursService : IAvailableHoursService
 
         List<AvailableSlotDto> availableSlotsDto = new List<AvailableSlotDto>();
         TimeSpan duration = professionalServiceOffering.Value;
-
+        
         foreach (var bloco in openingHours)
         {
             TimeOnly currentStart = bloco.StartTime;
+            string professionalName = bloco.Professional.Name;
             while (currentStart.Add(duration) <= bloco.EndTime)
             {
                 TimeOnly currentEnd = currentStart.Add(duration);
@@ -44,12 +45,12 @@ public class AvailableHoursService : IAvailableHoursService
 
                 if (!isOccupied)
                 {
-                    availableSlotsDto.Add(new AvailableSlotDto(currentStart, currentEnd));
+                    availableSlotsDto.Add(new AvailableSlotDto(currentStart, currentEnd, professionalName));
                 }
 
                 currentStart = currentEnd;
             }
-        }
+        } 
         
         return availableSlotsDto;
     }

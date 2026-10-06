@@ -16,9 +16,9 @@ public class EfProfessionalServiceOfferingRepository : IProfessionalServiceOffer
     
     public async Task<TimeSpan?> GetTimeSpanByServiceIdAndProfessionalId(int serviceId, int professionalId)
     {
-        var timeSpan = await _context.ProfessionalOfferings
+        TimeSpan? timeSpan = await _context.ProfessionalOfferings
             .Where(p => p.ProfessionalId == professionalId && p.ServiceId == serviceId)
-            .Select(p => p.Time)
+            .Select(p => (TimeSpan?)p.Time)
             .FirstOrDefaultAsync();
 
         return timeSpan;

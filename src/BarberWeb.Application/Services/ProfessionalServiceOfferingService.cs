@@ -14,7 +14,7 @@ public class ProfessionalServiceOfferingService : IProfessionalServiceOfferingSe
     
     public async Task<TimeSpan?> GetTimeSpanByServiceIdAndProfessionalId(int serviceId, int professionalId)
     {
-        TimeSpan? timeSpan = await _repository.GetTimeSpanByServiceIdAndProfessionalId(professionalId, serviceId);
+        TimeSpan? timeSpan = await _repository.GetTimeSpanByServiceIdAndProfessionalId(serviceId, professionalId);
         return timeSpan;
     }
 }
