@@ -19,6 +19,7 @@ namespace BarberWeb.Domain.Entities
 
         public int ProfessionalId { get; private set; } // EF Core não permite índice único com navegação; necessário para constraint em OnModelCreating
 
+        private SchedulingHours() { }
         public SchedulingHours(Customer customer, ProfessionalServiceOffering professionalServiceOffering, DateTimeOffset startDate, DateTimeOffset endDate)
         {
             if (endDate <= startDate)

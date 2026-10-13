@@ -12,6 +12,7 @@ namespace BarberWeb.Domain.Entities
         public decimal Price { get; private set; }
         public TimeSpan Time { get; private set; }
 
+        private ProfessionalServiceOffering() { }
         public ProfessionalServiceOffering(Professional professional, Service service, decimal price, TimeSpan time)
         {
             ArgumentNullException.ThrowIfNull(professional);

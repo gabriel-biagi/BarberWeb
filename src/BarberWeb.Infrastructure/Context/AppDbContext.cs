@@ -22,7 +22,7 @@ namespace BarberWeb.Infrastructure.Context
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<SchedulingHours>()
-                .HasIndex(s => new { s.StartDate, s.EndDate, s.ProfessionalId })
+                .HasIndex(s => new { s.ProfessionalId, s.StartDate, s.EndDate })
                 .IsUnique();
         }
     }

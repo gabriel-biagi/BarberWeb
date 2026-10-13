@@ -16,6 +16,8 @@ namespace BarberWeb.Domain.Entities
 
         public TimeOnly EndTime { get; private set; }
 
+        private OpeningHours() { }
+
         public OpeningHours(Professional professional, DayOfWeek dayOfWeek, TimeOnly startTime, TimeOnly endTime)
         {
             if (endTime <= startTime)
