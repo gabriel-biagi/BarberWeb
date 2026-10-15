@@ -1,5 +1,4 @@
 using BarberWeb.Api.Middlewares;
-using BarberWeb.Application.DTOs.Mappings;
 using BarberWeb.Application.Services;
 using BarberWeb.Application.Services.Interfaces;
 using BarberWeb.Domain.Interfaces;
@@ -30,9 +29,6 @@ builder.Services.AddScoped<IOpeningHoursService, OpeningHoursService>();
 builder.Services.AddScoped<IProfessionalServiceOfferingService, ProfessionalServiceOfferingService>();
 builder.Services.AddScoped<ISchedulingHoursService, SchedulingHoursService>();
 builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
-
-//Mapper
-builder.Services.AddAutoMapper(options => {}, typeof(ProfessionalResponseMappingProfile).Assembly);
 
 var app = builder.Build();
 

@@ -8,10 +8,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BarberWeb.Domain\BarberWeb.Domain.csproj" />
+    <ProjectReference Include="..\BarberWeb.Infrastructure\BarberWeb.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="15.1.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DTOs\Mappings\" />
   </ItemGroup>
 
 </Project>

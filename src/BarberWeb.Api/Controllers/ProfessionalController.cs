@@ -1,4 +1,5 @@
 using BarberWeb.Api.Middlewares;
+using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ public class ProfessionalController : ControllerBase
         _service = service;
     }
     
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}", Name = "GetByIdAsync")]
     [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status404NotFound)]
@@ -24,5 +25,16 @@ public class ProfessionalController : ControllerBase
     {
         var professional = await _service.GetByIdAsync(id);
         return Ok(professional);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
+    {
+        var response = await _service.CreateAsync(professionalRequest);
+        Console.WriteLine($"Id created: {response.Id}");
+        return CreatedAtRoute("GetByIdAsync", new { id = response.Id }, response);
     }
 }

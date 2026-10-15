@@ -1,4 +1,5 @@
 using AutoMapper;
+using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
 using BarberWeb.Domain.Entities;
@@ -10,12 +11,10 @@ namespace BarberWeb.Application.Services;
 public class ProfessionalService : IProfessionalService
 {
     private readonly IProfessionalRepository _repository;
-    private readonly IMapper _mapper;
 
-    public ProfessionalService(IProfessionalRepository repository, IMapper mapper)
+    public ProfessionalService(IProfessionalRepository repository)
     {
         _repository = repository;
-        _mapper = mapper;
     }
     
     public async Task<ProfessionalResponse> GetByIdAsync(int id)
@@ -30,7 +29,34 @@ public class ProfessionalService : IProfessionalService
         {
             throw new NotFoundException("Professional not found");
         }
-        var professionalResponse = _mapper.Map<Professional, ProfessionalResponse>(professional);
-        return professionalResponse;
+        return ToResponse(professional);
+    }
+
+    public async Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest)
+    {
+        var professional = new Professional(
+            professionalRequest.Name,
+            professionalRequest.Email,
+            professionalRequest.PhoneNumber);
+
+        try
+        {
+            var created = await _repository.CreateAsync(professional);
+            return ToResponse(created);
+        }
+        catch (ConcurrencyDuplicateException)
+        {
+            throw new BusinessException("Professional already exists.");
+        }
+    }
+    
+    private static ProfessionalResponse ToResponse(Professional professional)
+    {
+        return new ProfessionalResponse
+        {
+            Id = professional.Id,
+            Name = professional.Name,
+            Email = professional.Email
+        };
     }
 }
