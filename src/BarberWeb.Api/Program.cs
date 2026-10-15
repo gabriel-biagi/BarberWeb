@@ -1,10 +1,10 @@
+using BarberWeb.Application.DTOs.Mappings;
 using BarberWeb.Application.Services;
 using BarberWeb.Application.Services.Interfaces;
 using BarberWeb.Domain.Interfaces;
 using BarberWeb.Infrastructure.Context;
 using BarberWeb.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,11 +22,16 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseMySql(mySqlCon
 builder.Services.AddScoped<IOpeningHoursRepository, EfOpeningHoursRepository>();
 builder.Services.AddScoped<ISchedulingHoursRepository, EfSchedulingHoursRepository>();
 builder.Services.AddScoped<IProfessionalServiceOfferingRepository, EfProfessionalServiceOfferingRepository>();
+builder.Services.AddScoped<IProfessionalRepository, ProfessionalRepository>();
 //Services
 builder.Services.AddScoped<IAvailableHoursService, AvailableHoursService>();
 builder.Services.AddScoped<IOpeningHoursService, OpeningHoursService>();
 builder.Services.AddScoped<IProfessionalServiceOfferingService, ProfessionalServiceOfferingService>();
 builder.Services.AddScoped<ISchedulingHoursService, SchedulingHoursService>();
+builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
+
+//Mapper
+builder.Services.AddAutoMapper(options => {}, typeof(ProfessionalResponseMappingProfile).Assembly);
 
 var app = builder.Build();
 
