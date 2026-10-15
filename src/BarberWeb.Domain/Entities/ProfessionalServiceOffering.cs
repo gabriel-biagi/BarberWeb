@@ -24,6 +24,11 @@ namespace BarberWeb.Domain.Entities
                 throw new InvalidInputException("Price must be between 0.01 and 9999.99");
             }
 
+            if (time <= TimeSpan.Zero)
+            {
+                throw new InvalidInputException("Service duration (time) must be greater than zero.");
+            }
+
             Professional = professional;
             ProfessionalId = professional.Id;
             Service = service;
