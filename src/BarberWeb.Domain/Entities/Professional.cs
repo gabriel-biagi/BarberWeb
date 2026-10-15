@@ -26,13 +26,14 @@ namespace BarberWeb.Domain.Entities
                 throw new InvalidInputException("Email must be between 5 and 60 characters.");
             }
 
-            if (CheckInvalidPhoneNumber(phoneNumber))
+            var normalizedPhone = NormalizePhoneNumber(phoneNumber);
+            if (CheckInvalidPhoneNumber(normalizedPhone))
             {
-                throw new InvalidInputException("Phone Number must be between 10 and 15 characters.");
+                throw new InvalidInputException("Phone Number must be between 10 and 15 digits.");
             }
             Name = name;
             Email = email;
-            PhoneNumber = phoneNumber;
+            PhoneNumber = normalizedPhone;
         }
 
         
@@ -49,6 +50,16 @@ namespace BarberWeb.Domain.Entities
         private bool CheckInvalidPhoneNumber(string phoneNumber)
         {
             return (string.IsNullOrWhiteSpace(phoneNumber) || phoneNumber.Length < 10 || phoneNumber.Length > 15);
+        }
+        
+        private static string NormalizePhoneNumber(string? phoneNumber)
+        {
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                return string.Empty;
+            }
+
+            return new string(phoneNumber.Where(char.IsAsciiDigit).ToArray());
         }
     }
 }
