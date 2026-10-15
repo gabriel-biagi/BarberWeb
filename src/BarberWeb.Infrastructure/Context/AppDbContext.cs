@@ -24,6 +24,8 @@ namespace BarberWeb.Infrastructure.Context
             modelBuilder.Entity<SchedulingHours>()
                 .HasIndex(s => new { s.ProfessionalId, s.StartDate, s.EndDate })
                 .IsUnique();
+            modelBuilder.Entity<Professional>().HasIndex(p => p.Email).IsUnique();
+            modelBuilder.Entity<Professional>().HasIndex(p => p.PhoneNumber).IsUnique();
         }
     }
 }
