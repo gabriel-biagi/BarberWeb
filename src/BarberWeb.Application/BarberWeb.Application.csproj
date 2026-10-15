@@ -10,4 +10,8 @@
     <ProjectReference Include="..\BarberWeb.Domain\BarberWeb.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="15.1.3" />
+  </ItemGroup>
+
 </Project>

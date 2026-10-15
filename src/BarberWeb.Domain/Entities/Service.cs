@@ -1,4 +1,6 @@
 ﻿
+using BarberWeb.Domain.Exception;
+
 namespace BarberWeb.Domain.Entities
 {
     public class Service
@@ -13,12 +15,12 @@ namespace BarberWeb.Domain.Entities
         {
             if (CheckInvalidName(name))
             {
-                throw new ArgumentException("Name must be between 3 and 60 characters.");
+                throw new InvalidInputException("Name must be between 3 and 60 characters.");
             }
 
             if (CheckInvalidDescription(description))
             {
-                throw new ArgumentException("Description must be between 5 and 200 characters.");
+                throw new InvalidInputException("Description must be between 5 and 200 characters.");
             }
 
             Name = name;

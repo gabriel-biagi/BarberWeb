@@ -16,10 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\BarberWeb.Application\BarberWeb.Application.csproj" />
     <ProjectReference Include="..\BarberWeb.Infrastructure\BarberWeb.Infrastructure.csproj" />
   </ItemGroup>

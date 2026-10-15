@@ -1,5 +1,7 @@
 ﻿
 
+using BarberWeb.Domain.Exception;
+
 namespace BarberWeb.Domain.Entities
 {
     public class Professional
@@ -16,17 +18,17 @@ namespace BarberWeb.Domain.Entities
         {
             if (CheckInvalidName(name))
             {
-                throw new ArgumentException("Name must be between 3 and 60 characters.");
+                throw new InvalidInputException("Name must be between 3 and 60 characters.");
             }
 
             if (CheckInvalidEmail(email))
             {
-                throw new ArgumentException("Email must be between 5 and 60 characters.");
+                throw new InvalidInputException("Email must be between 5 and 60 characters.");
             }
 
             if (CheckInvalidPhoneNumber(phoneNumber))
             {
-                throw new ArgumentException("Phone Number must be between 10 and 15 characters.");
+                throw new InvalidInputException("Phone Number must be between 10 and 15 characters.");
             }
             Name = name;
             Email = email;

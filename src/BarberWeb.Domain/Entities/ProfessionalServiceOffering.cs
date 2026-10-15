@@ -1,4 +1,6 @@
 ﻿
+using BarberWeb.Domain.Exception;
+
 namespace BarberWeb.Domain.Entities
 {
     public class ProfessionalServiceOffering
@@ -19,7 +21,7 @@ namespace BarberWeb.Domain.Entities
             ArgumentNullException.ThrowIfNull(service);
             if (CheckInvalidPrice(price))
             {
-                throw new ArgumentException("Price must be between 0.01 and 9999.99");
+                throw new InvalidInputException("Price must be between 0.01 and 9999.99");
             }
 
             Professional = professional;

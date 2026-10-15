@@ -1,3 +1,4 @@
+using BarberWeb.Api.Middlewares;
 using BarberWeb.Application.DTOs.Mappings;
 using BarberWeb.Application.Services;
 using BarberWeb.Application.Services.Interfaces;
@@ -35,6 +36,7 @@ builder.Services.AddAutoMapper(options => {}, typeof(ProfessionalResponseMapping
 
 var app = builder.Build();
 
+app.ConfigureExceptionHandler(app.Environment);
 
 if (app.Environment.IsDevelopment())
 {
