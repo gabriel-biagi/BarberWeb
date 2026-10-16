@@ -1,4 +1,4 @@
-using AutoMapper;
+
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
@@ -44,9 +44,9 @@ public class ProfessionalService : IProfessionalService
             var created = await _repository.CreateAsync(professional);
             return ToResponse(created);
         }
-        catch (ConcurrencyDuplicateException)
+        catch (UniqueConstraintViolationException)
         {
-            throw new BusinessException("Professional already exists.");
+            throw new BusinessException("Email or phone already registered.");
         }
     }
     

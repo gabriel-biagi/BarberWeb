@@ -34,7 +34,6 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
-        Console.WriteLine($"Id created: {response.Id}");
         return CreatedAtRoute("GetByIdAsync", new { id = response.Id }, response);
     }
 }

@@ -32,7 +32,7 @@ public class ProfessionalRepository : IProfessionalRepository
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             _context.Entry(professional).State = EntityState.Detached;
-            throw new ConcurrencyDuplicateException(
+            throw new UniqueConstraintViolationException(
                 "A concurrent insert caused a unique constraint violation.", ex);
         }
         
@@ -40,5 +40,5 @@ public class ProfessionalRepository : IProfessionalRepository
     
     private static bool IsUniqueViolation(DbUpdateException ex)
         => ex.InnerException is MySqlException mySqlEx
-           && mySqlEx.ErrorCode == MySqlErrorCode.DuplicateKeyEntry;
+           && mySqlEx.Number == 1062;
 }

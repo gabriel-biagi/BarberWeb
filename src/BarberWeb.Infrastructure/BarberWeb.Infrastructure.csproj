@@ -22,8 +22,4 @@
     <ProjectReference Include="..\BarberWeb.Domain\BarberWeb.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Exceptions\" />
-  </ItemGroup>
-
 </Project>
