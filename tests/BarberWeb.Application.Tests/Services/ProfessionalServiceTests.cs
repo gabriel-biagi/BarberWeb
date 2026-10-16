@@ -53,7 +53,7 @@ namespace BarberWeb.Application.Tests.Services
             // Arrange
             int professionalId = 1;
             var professional = new Professional("Carlos Silva", "carlos@email.com", "11977776666");
-            typeof(Professional).GetProperty(nameof(Professional.Id))?.SetValue(professional, professionalId);
+            professional.Id = professionalId; // Atribuição direta utilizando o setter público
 
             _repositoryMock.Setup(r => r.GetByIdAsync(professionalId))
                 .ReturnsAsync(professional);
@@ -69,18 +69,24 @@ namespace BarberWeb.Application.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_WithValidRequest_ShouldCreateAndReturnResponseDto()
+        public async Task CreateAsync_WithValidRequest_ShouldMapAndPersistEntitySuccessfully()
         {
             // Arrange
             var request = new ProfessionalRequest
             {
                 Name = "Ana Souza",
                 Email = "ana@email.com",
-                PhoneNumber = "11955554444"
+                PhoneNumber = "(11) 95555-4444" // Enviando com máscara para testar a normalização
             };
 
+            Professional? capturedProfessional = null;
+
             _repositoryMock.Setup(r => r.CreateAsync(It.IsAny<Professional>()))
-                .Callback<Professional>(p => typeof(Professional).GetProperty(nameof(Professional.Id))?.SetValue(p, 10))
+                .Callback<Professional>(p => 
+                {
+                    capturedProfessional = p;
+                    p.Id = 10;
+                })
                 .ReturnsAsync((Professional p) => p);
 
             // Act
@@ -91,7 +97,33 @@ namespace BarberWeb.Application.Tests.Services
             Assert.Equal(10, result.Id);
             Assert.Equal("Ana Souza", result.Name);
             Assert.Equal("ana@email.com", result.Email);
+
+            // Conferindo se a entidade montada possui os dados corretos do request e normalizados
+            Assert.NotNull(capturedProfessional);
+            Assert.Equal(request.Name, capturedProfessional.Name);
+            Assert.Equal(request.Email, capturedProfessional.Email);
+            Assert.Equal("11955554444", capturedProfessional.PhoneNumber); // Normalizado pela entidade
+
             _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Professional>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CreateAsync_WithInvalidRequestData_ShouldThrowInvalidInputExceptionAndNotCallRepository()
+        {
+            // Arrange (Nome inválido com menos de 3 caracteres)
+            var request = new ProfessionalRequest
+            {
+                Name = "Ab",
+                Email = "ana@email.com",
+                PhoneNumber = "11955554444"
+            };
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidInputException>(() => 
+                _service.CreateAsync(request));
+
+            Assert.Equal("Name must be between 3 and 60 characters.", exception.Message);
+            _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Professional>()), Times.Never);
         }
 
         [Fact]
@@ -106,13 +138,36 @@ namespace BarberWeb.Application.Tests.Services
             };
 
             _repositoryMock.Setup(r => r.CreateAsync(It.IsAny<Professional>()))
-                .ThrowsAsync(new UniqueConstraintViolationException("Duplicate key", null!)); // Corrigido para passar os dois argumentos exigidos
+                .ThrowsAsync(new UniqueConstraintViolationException("Duplicate key", null!));
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<BusinessException>(() => 
                 _service.CreateAsync(request));
 
             Assert.Equal("Email or phone already registered.", exception.Message);
+        }
+
+        [Fact]
+        public async Task CreateAsync_WhenOtherExceptionOccurs_ShouldPassThroughWithoutTranslation()
+        {
+            // Arrange
+            var request = new ProfessionalRequest
+            {
+                Name = "Ana Souza",
+                Email = "ana@email.com",
+                PhoneNumber = "11955554444"
+            };
+
+            var unexpectedException = new InvalidOperationException("Database connection failure");
+
+            _repositoryMock.Setup(r => r.CreateAsync(It.IsAny<Professional>()))
+                .ThrowsAsync(unexpectedException);
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
+                _service.CreateAsync(request));
+
+            Assert.Same(unexpectedException, exception);
         }
     }
 }
