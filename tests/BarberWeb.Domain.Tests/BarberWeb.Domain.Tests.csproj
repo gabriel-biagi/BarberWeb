@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\BarberWeb.Application\BarberWeb.Application.csproj" />
     <ProjectReference Include="..\..\src\BarberWeb.Domain\BarberWeb.Domain.csproj" />
   </ItemGroup>
 
