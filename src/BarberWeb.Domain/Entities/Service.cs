@@ -28,12 +28,12 @@ namespace BarberWeb.Domain.Entities
 
         }
 
-        private bool CheckInvalidName(string field)
+        private static bool CheckInvalidName(string field)
         {
             return (string.IsNullOrWhiteSpace(field) || field.Length < 3 || field.Length > 60);
         }
 
-        private bool CheckInvalidDescription(string desc)
+        private static bool CheckInvalidDescription(string desc)
         {
             return (string.IsNullOrWhiteSpace(desc) || desc.Length < 5 || desc.Length > 200);
         }
