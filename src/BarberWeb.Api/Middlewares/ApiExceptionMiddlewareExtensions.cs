@@ -24,6 +24,7 @@ public static class ApiExceptionMiddlewareExtensions
                         NotFoundException => ((int)HttpStatusCode.NotFound, exception.Message),
                         BusinessException => ((int)HttpStatusCode.UnprocessableEntity, exception.Message),
                         InvalidInputException => ((int)HttpStatusCode.BadRequest, exception.Message),
+                        UniqueConstraintViolationException => ((int)HttpStatusCode.Conflict, exception.Message),
                         _ => ((int)HttpStatusCode.InternalServerError, "Internal Server Error")
                     };
                     context.Response.StatusCode = status;
