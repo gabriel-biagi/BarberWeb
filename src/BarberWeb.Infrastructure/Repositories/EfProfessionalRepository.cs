@@ -30,7 +30,12 @@ public class EfProfessionalRepository(AppDbContext context) : IProfessionalRepos
         }
         
     }
-    
+
+    public async Task<List<Professional>> GetAllAsync()
+    {
+        return await context.Professionals.AsNoTracking().ToListAsync();
+    }
+
     private static bool IsUniqueViolation(DbUpdateException ex)
         => ex.InnerException is MySqlException mySqlEx
            && mySqlEx.Number == 1062;

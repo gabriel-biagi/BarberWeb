@@ -27,13 +27,23 @@ public class ProfessionalController : ControllerBase
         return Ok(professional);
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllAsync()
+    {
+        var professionals = await _service.GetAllAsync();
+        return Ok(professionals);
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
         return CreatedAtRoute("GetByIdAsync", new { id = response.Id }, response);
     }
+    
+    
 }

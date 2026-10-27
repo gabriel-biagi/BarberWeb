@@ -7,4 +7,5 @@ public interface IProfessionalService
 {
     Task<ProfessionalResponse> GetByIdAsync(int id);
     Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest);
+    Task<List<ProfessionalResponse>> GetAllAsync();
 }

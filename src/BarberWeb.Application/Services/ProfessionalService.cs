@@ -32,6 +32,13 @@ public class ProfessionalService : IProfessionalService
         return ToResponse(professional);
     }
 
+    public async Task<List<ProfessionalResponse>> GetAllAsync()
+    {
+        var professionals = await _repository.GetAllAsync();
+
+        return  ToResponseList(professionals);
+    }
+
     public async Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest)
     {
         var professional = new Professional(
@@ -54,8 +61,14 @@ public class ProfessionalService : IProfessionalService
     {
         return new ProfessionalResponse
         {
+            Id = professional.Id,
             Name = professional.Name,
             Email = professional.Email
         };
+    }
+
+    private static List<ProfessionalResponse> ToResponseList(List<Professional> professionals)
+    {
+        return professionals.Select(ToResponse).ToList();
     }
 }
