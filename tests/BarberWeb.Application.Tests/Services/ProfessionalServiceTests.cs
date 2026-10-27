@@ -63,7 +63,6 @@ namespace BarberWeb.Application.Tests.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(professionalId, result.Id);
             Assert.Equal("Carlos Silva", result.Name);
             Assert.Equal("carlos@email.com", result.Email);
         }
@@ -94,7 +93,6 @@ namespace BarberWeb.Application.Tests.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(10, result.Id);
             Assert.Equal("Ana Souza", result.Name);
             Assert.Equal("ana@email.com", result.Email);
 

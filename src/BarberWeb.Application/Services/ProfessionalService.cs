@@ -54,7 +54,6 @@ public class ProfessionalService : IProfessionalService
     {
         return new ProfessionalResponse
         {
-            Id = professional.Id,
             Name = professional.Name,
             Email = professional.Email
         };
