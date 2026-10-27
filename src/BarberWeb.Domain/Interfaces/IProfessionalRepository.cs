@@ -7,4 +7,5 @@ public interface IProfessionalRepository
     Task<Professional?> GetByIdAsync(int id);
     Task<Professional> CreateAsync(Professional professional);
     Task<List<Professional>> GetAllAsync();
+    Task DeleteAsync(Professional professional);
 }

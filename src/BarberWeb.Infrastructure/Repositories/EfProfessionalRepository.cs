@@ -11,11 +11,13 @@ public class EfProfessionalRepository(AppDbContext context) : IProfessionalRepos
 {
     public async Task<Professional?> GetByIdAsync(int id)
     {
+        ArgumentNullException.ThrowIfNull(id);
         return await context.Professionals.Where(professional => professional.Id == id).AsNoTracking().FirstOrDefaultAsync();
     }
 
     public async Task<Professional> CreateAsync(Professional professional)
     {
+        ArgumentNullException.ThrowIfNull(professional);
         try
         {
             context.Professionals.Add(professional);
@@ -34,6 +36,13 @@ public class EfProfessionalRepository(AppDbContext context) : IProfessionalRepos
     public async Task<List<Professional>> GetAllAsync()
     {
         return await context.Professionals.AsNoTracking().ToListAsync();
+    }
+
+    public async Task DeleteAsync(Professional professional)
+    {
+        ArgumentNullException.ThrowIfNull(professional);
+        context.Professionals.Remove(professional);
+        await context.SaveChangesAsync();
     }
 
     private static bool IsUniqueViolation(DbUpdateException ex)

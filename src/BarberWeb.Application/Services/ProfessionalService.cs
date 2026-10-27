@@ -19,10 +19,7 @@ public class ProfessionalService : IProfessionalService
     
     public async Task<ProfessionalResponse> GetByIdAsync(int id)
     {
-        if (id <= 0)
-        {
-            throw new InvalidInputException("Professional code must be greater than 0");
-        }
+        TriggerExceptionIfIdIsInvalid(id);
 
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
@@ -38,13 +35,10 @@ public class ProfessionalService : IProfessionalService
 
         return  ToResponseList(professionals);
     }
-
+    
     public async Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest)
     {
-        var professional = new Professional(
-            professionalRequest.Name,
-            professionalRequest.Email,
-            professionalRequest.PhoneNumber);
+        var professional = ToEntity(professionalRequest);
 
         try
         {
@@ -57,8 +51,21 @@ public class ProfessionalService : IProfessionalService
         }
     }
     
+    public async Task DeleteAsync(int id)
+    {
+        TriggerExceptionIfIdIsInvalid(id);
+        
+        var professional = await _repository.GetByIdAsync(id);
+        if (professional == null)
+            throw new NotFoundException("Professional not found.");
+        
+        await _repository.DeleteAsync(professional);
+    }
+
+    //Métodos Auxiliares
     private static ProfessionalResponse ToResponse(Professional professional)
     {
+        ArgumentNullException.ThrowIfNull(professional);
         return new ProfessionalResponse
         {
             Id = professional.Id,
@@ -69,6 +76,25 @@ public class ProfessionalService : IProfessionalService
 
     private static List<ProfessionalResponse> ToResponseList(List<Professional> professionals)
     {
+        ArgumentNullException.ThrowIfNull(professionals);
         return professionals.Select(ToResponse).ToList();
+    }
+    
+    private static Professional ToEntity(ProfessionalRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return new Professional(
+            request.Name,
+            request.Email,
+            request.PhoneNumber
+        );
+    }
+
+    private static void TriggerExceptionIfIdIsInvalid(int id)
+    {
+        if (id <= 0)
+        {
+            throw new InvalidInputException("Professional code must be greater than 0");
+        }
     }
 }

@@ -28,7 +28,7 @@ public class ProfessionalController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<ProfessionalResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllAsync()
     {
         var professionals = await _service.GetAllAsync();
@@ -44,6 +44,14 @@ public class ProfessionalController : ControllerBase
         var response = await _service.CreateAsync(professionalRequest);
         return CreatedAtRoute("GetByIdAsync", new { id = response.Id }, response);
     }
-    
-    
+
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DeleteAsync(int id)
+    {
+        await _service.DeleteAsync(id);
+        return NoContent();
+    }
 }
