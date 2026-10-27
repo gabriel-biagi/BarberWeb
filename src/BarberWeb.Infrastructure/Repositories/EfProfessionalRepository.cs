@@ -7,31 +7,24 @@ using MySqlConnector;
 
 namespace BarberWeb.Infrastructure.Repositories;
 
-public class ProfessionalRepository : IProfessionalRepository
+public class EfProfessionalRepository(AppDbContext context) : IProfessionalRepository
 {
-    private readonly AppDbContext _context;
-
-    public ProfessionalRepository(AppDbContext context)
-    {
-        _context = context;
-    }
-    
     public async Task<Professional?> GetByIdAsync(int id)
     {
-        return await _context.Professionals.Where(professional => professional.Id == id).AsNoTracking().FirstOrDefaultAsync();
+        return await context.Professionals.Where(professional => professional.Id == id).AsNoTracking().FirstOrDefaultAsync();
     }
 
     public async Task<Professional> CreateAsync(Professional professional)
     {
         try
         {
-            _context.Professionals.Add(professional);
-            await _context.SaveChangesAsync();
+            context.Professionals.Add(professional);
+            await context.SaveChangesAsync();
             return professional;
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            _context.Entry(professional).State = EntityState.Detached;
+            context.Entry(professional).State = EntityState.Detached;
             throw new UniqueConstraintViolationException(
                 "A concurrent insert caused a unique constraint violation.", ex);
         }

@@ -22,7 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseMySql(mySqlCon
 builder.Services.AddScoped<IOpeningHoursRepository, EfOpeningHoursRepository>();
 builder.Services.AddScoped<ISchedulingHoursRepository, EfSchedulingHoursRepository>();
 builder.Services.AddScoped<IProfessionalServiceOfferingRepository, EfProfessionalServiceOfferingRepository>();
-builder.Services.AddScoped<IProfessionalRepository, ProfessionalRepository>();
+builder.Services.AddScoped<IProfessionalRepository, EfProfessionalRepository>();
 //Services
 builder.Services.AddScoped<IAvailableHoursService, AvailableHoursService>();
 builder.Services.AddScoped<IOpeningHoursService, OpeningHoursService>();
