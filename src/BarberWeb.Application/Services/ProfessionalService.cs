@@ -20,11 +20,11 @@ public class ProfessionalService : IProfessionalService
     public async Task<Result<ProfessionalResponse>> GetByIdAsync(int id)
     {
         if (id <= 0)
-            return Result<ProfessionalResponse>.Failure("Invalid professional id.");
+            return Result<ProfessionalResponse>.Failure(ErrorTypes.InvalidEntry,"Invalid professional id.");
 
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-            return Result<ProfessionalResponse>.Failure("Professional not found.");
+            return Result<ProfessionalResponse>.Failure(ErrorTypes.NotFound,"Professional not found.");
         
         var response = ToResponse(professional);
         return Result<ProfessionalResponse>.Success(response);
@@ -48,21 +48,21 @@ public class ProfessionalService : IProfessionalService
         }
         catch (UniqueConstraintViolationException)
         {
-            return Result<ProfessionalResponse>.Failure("Professional already exists.");
+            return Result<ProfessionalResponse>.Failure(ErrorTypes.Conflict,"Professional already exists.");
         }
     }
     
     public async Task<Result<ProfessionalResponse>> DeleteAsync(int id)
     {
         if (id <= 0)
-            return Result<ProfessionalResponse>.Failure("Invalid professional id.");
+            return Result<ProfessionalResponse>.Failure(ErrorTypes.InvalidEntry,"Invalid professional id.");
 
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-            return Result<ProfessionalResponse>.Failure("Professional not found.");
+            return Result<ProfessionalResponse>.Failure(ErrorTypes.NotFound,"Professional not found.");
         
         await _repository.DeleteAsync(professional);
-        return Result<ProfessionalResponse>.Success();
+        return Result<ProfessionalResponse>.Success(null);
     }
 
     //Métodos Auxiliares

@@ -1,4 +1,5 @@
 using BarberWeb.Api.Middlewares;
+using BarberWeb.Application.Common;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
@@ -24,10 +25,13 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> GetByIdAsync(int id)
     {
         var response = await _service.GetByIdAsync(id);
-        if (!response.IsSuccess)
-        {
+        
+        if (!response.IsSuccess && response.ErrorType == ErrorTypes.InvalidEntry)
             return BadRequest(new {error = response.ErrorMessage});
-        }
+        
+        if (!response.IsSuccess && response.ErrorType == ErrorTypes.NotFound)
+            return NotFound(new {error = response.ErrorMessage});
+        
         return Ok(response.Value);
     }
 
@@ -46,11 +50,13 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
-        if (!response.IsSuccess)
-        {
+        if (!response.IsSuccess &&  response.ErrorType == ErrorTypes.InvalidEntry)
             return BadRequest(new {error = response.ErrorMessage});
-        }
-        return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response);
+        
+        if (!response.IsSuccess && response.ErrorType == ErrorTypes.Conflict)
+            return UnprocessableEntity(new {error = response.ErrorMessage});
+        
+        return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response.Value);
     }
 
     [HttpDelete("{id:int}")]
@@ -59,9 +65,12 @@ public class ProfessionalController : ControllerBase
     [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
-        var resposte = await _service.DeleteAsync(id);
-        if (!resposte.IsSuccess)
-            return BadRequest(new {error = resposte.ErrorMessage});
+        var response = await _service.DeleteAsync(id);
+        if (!response.IsSuccess && response.ErrorType == ErrorTypes.InvalidEntry)
+            return BadRequest(new {error = response.ErrorMessage});
+        
+        if (!response.IsSuccess && response.ErrorType == ErrorTypes.NotFound)
+            return NotFound(new {error = response.ErrorMessage});
         
         return NoContent();
     }
