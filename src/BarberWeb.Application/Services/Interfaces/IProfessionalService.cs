@@ -8,6 +8,6 @@ public interface IProfessionalService
 {
     Task<Result<ProfessionalResponse>> GetByIdAsync(int id);
     Task<Result<ProfessionalResponse>> CreateAsync(ProfessionalRequest professionalRequest);
-    Task<List<ProfessionalResponse>> GetAllAsync();
-    Task<Result<ProfessionalResponse>> DeleteAsync(int id);
+    Task<Result<List<ProfessionalResponse>>> GetAllAsync();
+    Task<Result> DeleteAsync(int id);
 }

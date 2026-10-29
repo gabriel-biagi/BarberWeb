@@ -1,6 +1,6 @@
+using BarberWeb.Application.Common;
 using BarberWeb.Application.DTOs;
 using BarberWeb.Application.Services.Interfaces;
-using BarberWeb.Domain.Exception;
 
 namespace BarberWeb.Application.Services;
 
@@ -18,7 +18,7 @@ public class AvailableHoursService : IAvailableHoursService
         _professionalServiceOfferingService = professionalServiceOfferingService;
     }
     
-    public async Task<IEnumerable<AvailableSlotDto>> GetAvailableSlotsByProfessionalAndDateAsync(int professionalId, DateTimeOffset date, int serviceId)
+    public async Task<Result<IEnumerable<AvailableSlotDto>>> GetAvailableSlotsByProfessionalAndDateAsync(int professionalId, DateTimeOffset date, int serviceId)
     {
         DayOfWeek dayOfWeek = date.DayOfWeek;
         var openingHours = await _openingHoursService.GetOpeningHoursOfTheProfessionalByDay(professionalId, dayOfWeek);
@@ -26,7 +26,8 @@ public class AvailableHoursService : IAvailableHoursService
         TimeSpan? professionalServiceOffering = await _professionalServiceOfferingService.GetTimeSpanByServiceIdAndProfessionalId(serviceId, professionalId);
         if (professionalServiceOffering is null)
         {
-            throw new BusinessException("The professional does not have a defined duration for the specific Service");
+            return Result<IEnumerable<AvailableSlotDto>>.Failure(ErrorType.BusinessRule,
+                "The professional does not have a defined duration for the specific Service");
         }
 
         List<AvailableSlotDto> availableSlotsDto = new List<AvailableSlotDto>();
@@ -52,6 +53,6 @@ public class AvailableHoursService : IAvailableHoursService
             }
         } 
         
-        return availableSlotsDto;
+        return Result<IEnumerable<AvailableSlotDto>>.Success(availableSlotsDto);
     }
 }

@@ -16,27 +16,23 @@ public class ProfessionalService : IProfessionalService
     {
         _repository = repository;
     }
-    
+
     public async Task<Result<ProfessionalResponse>> GetByIdAsync(int id)
     {
-        if (id <= 0)
-            return Result<ProfessionalResponse>.Failure(ErrorTypes.InvalidEntry,"Invalid professional id.");
-
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-            return Result<ProfessionalResponse>.Failure(ErrorTypes.NotFound,"Professional not found.");
-        
-        var response = ToResponse(professional);
-        return Result<ProfessionalResponse>.Success(response);
+            return Result<ProfessionalResponse>.Failure(ErrorType.NotFound, "Professional not found.");
+
+        return Result<ProfessionalResponse>.Success(ToResponse(professional));
     }
 
-    public async Task<List<ProfessionalResponse>> GetAllAsync()
+    public async Task<Result<List<ProfessionalResponse>>> GetAllAsync()
     {
         var professionals = await _repository.GetAllAsync();
 
-        return  ToResponseList(professionals);
+        return Result<List<ProfessionalResponse>>.Success(ToResponseList(professionals));
     }
-    
+
     public async Task<Result<ProfessionalResponse>> CreateAsync(ProfessionalRequest professionalRequest)
     {
         var professional = ToEntity(professionalRequest);
@@ -48,24 +44,21 @@ public class ProfessionalService : IProfessionalService
         }
         catch (UniqueConstraintViolationException)
         {
-            return Result<ProfessionalResponse>.Failure(ErrorTypes.Conflict,"Professional already exists.");
+            return Result<ProfessionalResponse>.Failure(ErrorType.Conflict, "Professional already exists.");
         }
     }
-    
-    public async Task<Result<ProfessionalResponse>> DeleteAsync(int id)
-    {
-        if (id <= 0)
-            return Result<ProfessionalResponse>.Failure(ErrorTypes.InvalidEntry,"Invalid professional id.");
 
+    public async Task<Result> DeleteAsync(int id)
+    {
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-            return Result<ProfessionalResponse>.Failure(ErrorTypes.NotFound,"Professional not found.");
-        
+            return Result.Failure(ErrorType.NotFound, "Professional not found.");
+
         await _repository.DeleteAsync(professional);
-        return Result<ProfessionalResponse>.Success(null);
+        return Result.Success();
     }
 
-    //Métodos Auxiliares
+    // Métodos Auxiliares
     private static ProfessionalResponse ToResponse(Professional professional)
     {
         ArgumentNullException.ThrowIfNull(professional);
@@ -82,7 +75,7 @@ public class ProfessionalService : IProfessionalService
         ArgumentNullException.ThrowIfNull(professionals);
         return professionals.Select(ToResponse).ToList();
     }
-    
+
     private static Professional ToEntity(ProfessionalRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -92,5 +85,4 @@ public class ProfessionalService : IProfessionalService
             request.PhoneNumber
         );
     }
-    
 }

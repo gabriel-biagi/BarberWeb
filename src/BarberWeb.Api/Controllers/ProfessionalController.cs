@@ -1,5 +1,5 @@
-using BarberWeb.Api.Middlewares;
-using BarberWeb.Application.Common;
+using System.ComponentModel.DataAnnotations;
+using BarberWeb.Api.Extensions;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
@@ -20,14 +20,14 @@ public class ProfessionalController : ControllerBase
     
     [HttpGet("{id:int}", Name = "GetByIdAsync")]
     [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetByIdAsync(int id)
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByIdAsync([Range(1, int.MaxValue, ErrorMessage = "Id must be greater than zero.")] int id)
     {
         var response = await _service.GetByIdAsync(id);
 
-        if (!response.IsSuccess)
-            return MapFailure(response);
+        if (response.IsFailure)
+            return this.ToProblem(response);
 
         return Ok(response.Value);
     }
@@ -36,46 +36,39 @@ public class ProfessionalController : ControllerBase
     [ProducesResponseType(typeof(List<ProfessionalResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllAsync()
     {
-        var professionals = await _service.GetAllAsync();
-        return Ok(professionals);
+        var response = await _service.GetAllAsync();
+
+        if (response.IsFailure)
+            return this.ToProblem(response);
+
+        return Ok(response.Value);
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(ProfessionalResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
 
-        if (!response.IsSuccess)
-            return MapFailure(response);
+        if (response.IsFailure)
+            return this.ToProblem(response);
 
         return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response.Value);
     }
 
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> DeleteAsync(int id)
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAsync([Range(1, int.MaxValue, ErrorMessage = "Id must be greater than zero.")] int id)
     {
         var response = await _service.DeleteAsync(id);
 
-        if (!response.IsSuccess)
-            return MapFailure(response);
+        if (response.IsFailure)
+            return this.ToProblem(response);
 
         return NoContent();
-    }
-
-    private IActionResult MapFailure<T>(Result<T> result)
-    {
-        return result.ErrorType switch
-        {
-            ErrorTypes.InvalidEntry => BadRequest(new { error = result.ErrorMessage }),
-            ErrorTypes.NotFound => NotFound(new { error = result.ErrorMessage }),
-            ErrorTypes.Conflict => UnprocessableEntity(new { error = result.ErrorMessage }),
-            _ => throw new InvalidOperationException($"ErrorType without HTTP mapping: {result.ErrorType}")
-        };
     }
 }
