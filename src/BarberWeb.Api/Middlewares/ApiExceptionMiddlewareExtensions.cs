@@ -24,7 +24,7 @@ public static class ApiExceptionMiddlewareExtensions
                         NotFoundException => ((int)HttpStatusCode.NotFound, "Resource not found" , exception.Message),
                         BusinessException => ((int)HttpStatusCode.UnprocessableEntity, "Business rule violation" , exception.Message),
                         InvalidInputException => ((int)HttpStatusCode.BadRequest, "Invalid input",exception.Message),
-                        _ => ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred", "Internal Server Error")
+                        _ => ((int)HttpStatusCode.InternalServerError, "Internal Server Error", "An unexpected error occurred")
                     };
                     context.Response.StatusCode = status;
                     var stackTrace = env.IsDevelopment() ? exception.StackTrace : null;
