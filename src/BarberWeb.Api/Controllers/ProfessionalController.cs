@@ -25,13 +25,10 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> GetByIdAsync(int id)
     {
         var response = await _service.GetByIdAsync(id);
-        
-        if (!response.IsSuccess && response.ErrorType == ErrorTypes.InvalidEntry)
-            return BadRequest(new {error = response.ErrorMessage});
-        
-        if (!response.IsSuccess && response.ErrorType == ErrorTypes.NotFound)
-            return NotFound(new {error = response.ErrorMessage});
-        
+
+        if (!response.IsSuccess)
+            return MapFailure(response);
+
         return Ok(response.Value);
     }
 
@@ -50,12 +47,10 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
-        if (!response.IsSuccess &&  response.ErrorType == ErrorTypes.InvalidEntry)
-            return BadRequest(new {error = response.ErrorMessage});
-        
-        if (!response.IsSuccess && response.ErrorType == ErrorTypes.Conflict)
-            return UnprocessableEntity(new {error = response.ErrorMessage});
-        
+
+        if (!response.IsSuccess)
+            return MapFailure(response);
+
         return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response.Value);
     }
 
@@ -66,12 +61,21 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> DeleteAsync(int id)
     {
         var response = await _service.DeleteAsync(id);
-        if (!response.IsSuccess && response.ErrorType == ErrorTypes.InvalidEntry)
-            return BadRequest(new {error = response.ErrorMessage});
-        
-        if (!response.IsSuccess && response.ErrorType == ErrorTypes.NotFound)
-            return NotFound(new {error = response.ErrorMessage});
-        
+
+        if (!response.IsSuccess)
+            return MapFailure(response);
+
         return NoContent();
+    }
+
+    private IActionResult MapFailure<T>(Result<T> result)
+    {
+        return result.ErrorType switch
+        {
+            ErrorTypes.InvalidEntry => BadRequest(new { error = result.ErrorMessage }),
+            ErrorTypes.NotFound => NotFound(new { error = result.ErrorMessage }),
+            ErrorTypes.Conflict => UnprocessableEntity(new { error = result.ErrorMessage }),
+            _ => throw new InvalidOperationException($"ErrorType without HTTP mapping: {result.ErrorType}")
+        };
     }
 }
