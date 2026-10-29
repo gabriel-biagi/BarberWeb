@@ -12,7 +12,7 @@ public static class ApiExceptionMiddlewareExtensions
         {
             appError.Run(async context =>
             {
-                context.Response.ContentType = "application/json";
+                context.Response.ContentType = "application/problem+json";
 
                 var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
                 if (contextFeature != null)
