@@ -19,21 +19,24 @@ public static class ApiExceptionMiddlewareExtensions
                 {
                     var exception = contextFeature.Error;
 
-                    var (status, message) = exception switch
+                    var (status, title, detail) = exception switch
                     {
-                        NotFoundException => ((int)HttpStatusCode.NotFound, exception.Message),
-                        BusinessException => ((int)HttpStatusCode.UnprocessableEntity, exception.Message),
-                        InvalidInputException => ((int)HttpStatusCode.BadRequest, exception.Message),
-                        _ => ((int)HttpStatusCode.InternalServerError, "Internal Server Error")
+                        NotFoundException => ((int)HttpStatusCode.NotFound, "Resource not found" , exception.Message),
+                        BusinessException => ((int)HttpStatusCode.UnprocessableEntity, "Business rule violation" , exception.Message),
+                        InvalidInputException => ((int)HttpStatusCode.BadRequest, "Invalid input",exception.Message),
+                        _ => ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred", "Internal Server Error")
                     };
                     context.Response.StatusCode = status;
                     var stackTrace = env.IsDevelopment() ? exception.StackTrace : null;
-                    var errorResponse = new ErrorDetails(
-                        status,
-                        message,
+                    var errorResponse = new ApiProblemDetails(
                         context.TraceIdentifier,
                         stackTrace
-                    );
+                    )
+                    {
+                        Status = status,
+                        Title = title,
+                        Detail = detail
+                    };
 
                     await context.Response.WriteAsync(errorResponse.ToString());
                 }
