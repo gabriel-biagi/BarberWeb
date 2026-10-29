@@ -23,8 +23,12 @@ public class ProfessionalController : ControllerBase
     [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(int id)
     {
-        var professional = await _service.GetByIdAsync(id);
-        return Ok(professional);
+        var response = await _service.GetByIdAsync(id);
+        if (!response.IsSuccess)
+        {
+            return BadRequest(new {error = response.ErrorMessage});
+        }
+        return Ok(response.Value);
     }
 
     [HttpGet]
@@ -42,7 +46,11 @@ public class ProfessionalController : ControllerBase
     public async Task<IActionResult> PostAsync([FromBody] ProfessionalRequest professionalRequest)
     {
         var response = await _service.CreateAsync(professionalRequest);
-        return CreatedAtRoute("GetByIdAsync", new { id = response.Id }, response);
+        if (!response.IsSuccess)
+        {
+            return BadRequest(new {error = response.ErrorMessage});
+        }
+        return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response);
     }
 
     [HttpDelete("{id:int}")]
@@ -51,7 +59,10 @@ public class ProfessionalController : ControllerBase
     [ProducesResponseType(typeof(ErrorDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteAsync(int id)
     {
-        await _service.DeleteAsync(id);
+        var resposte = await _service.DeleteAsync(id);
+        if (!resposte.IsSuccess)
+            return BadRequest(new {error = resposte.ErrorMessage});
+        
         return NoContent();
     }
 }

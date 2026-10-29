@@ -1,3 +1,4 @@
+using BarberWeb.Application.Common;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 
@@ -5,8 +6,8 @@ namespace BarberWeb.Application.Services.Interfaces;
 
 public interface IProfessionalService
 {
-    Task<ProfessionalResponse> GetByIdAsync(int id);
-    Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest);
+    Task<Result<ProfessionalResponse>> GetByIdAsync(int id);
+    Task<Result<ProfessionalResponse>> CreateAsync(ProfessionalRequest professionalRequest);
     Task<List<ProfessionalResponse>> GetAllAsync();
-    Task DeleteAsync(int id);
+    Task<Result<ProfessionalResponse>> DeleteAsync(int id);
 }

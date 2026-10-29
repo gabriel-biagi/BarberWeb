@@ -1,4 +1,4 @@
-
+using BarberWeb.Application.Common;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
@@ -17,16 +17,17 @@ public class ProfessionalService : IProfessionalService
         _repository = repository;
     }
     
-    public async Task<ProfessionalResponse> GetByIdAsync(int id)
+    public async Task<Result<ProfessionalResponse>> GetByIdAsync(int id)
     {
-        TriggerExceptionIfIdIsInvalid(id);
+        if (id <= 0)
+            return Result<ProfessionalResponse>.Failure("Invalid professional id.");
 
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-        {
-            throw new NotFoundException("Professional not found");
-        }
-        return ToResponse(professional);
+            return Result<ProfessionalResponse>.Failure("Professional not found.");
+        
+        var response = ToResponse(professional);
+        return Result<ProfessionalResponse>.Success(response);
     }
 
     public async Task<List<ProfessionalResponse>> GetAllAsync()
@@ -36,30 +37,32 @@ public class ProfessionalService : IProfessionalService
         return  ToResponseList(professionals);
     }
     
-    public async Task<ProfessionalResponse> CreateAsync(ProfessionalRequest professionalRequest)
+    public async Task<Result<ProfessionalResponse>> CreateAsync(ProfessionalRequest professionalRequest)
     {
         var professional = ToEntity(professionalRequest);
 
         try
         {
             var created = await _repository.CreateAsync(professional);
-            return ToResponse(created);
+            return Result<ProfessionalResponse>.Success(ToResponse(created));
         }
         catch (UniqueConstraintViolationException)
         {
-            throw new BusinessException("Email or phone already registered.");
+            return Result<ProfessionalResponse>.Failure("Professional already exists.");
         }
     }
     
-    public async Task DeleteAsync(int id)
+    public async Task<Result<ProfessionalResponse>> DeleteAsync(int id)
     {
-        TriggerExceptionIfIdIsInvalid(id);
-        
+        if (id <= 0)
+            return Result<ProfessionalResponse>.Failure("Invalid professional id.");
+
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
-            throw new NotFoundException("Professional not found.");
+            return Result<ProfessionalResponse>.Failure("Professional not found.");
         
         await _repository.DeleteAsync(professional);
+        return Result<ProfessionalResponse>.Success();
     }
 
     //Métodos Auxiliares
@@ -89,12 +92,5 @@ public class ProfessionalService : IProfessionalService
             request.PhoneNumber
         );
     }
-
-    private static void TriggerExceptionIfIdIsInvalid(int id)
-    {
-        if (id <= 0)
-        {
-            throw new InvalidInputException("Professional code must be greater than 0");
-        }
-    }
+    
 }
