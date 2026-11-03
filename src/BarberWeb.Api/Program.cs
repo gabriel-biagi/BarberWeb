@@ -5,12 +5,28 @@ using BarberWeb.Domain.Interfaces;
 using BarberWeb.Infrastructure.Context;
 using BarberWeb.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var problemDetails = ApiProblemDetailsFactory.CreateValidation(
+                context.HttpContext,
+                context.ModelState);
+
+            return new ObjectResult(problemDetails)
+            {
+                StatusCode = StatusCodes.Status400BadRequest,
+                ContentTypes = { "application/problem+json" }
+            };
+        };
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -32,7 +48,7 @@ builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
 
 var app = builder.Build();
 
-app.ConfigureExceptionHandler(app.Environment);
+app.ConfigureExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

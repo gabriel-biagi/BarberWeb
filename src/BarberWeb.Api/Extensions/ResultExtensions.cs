@@ -1,3 +1,4 @@
+using BarberWeb.Api.Middlewares;
 using BarberWeb.Application.Common;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,6 +22,16 @@ public static class ResultExtensions
             _ => throw new InvalidOperationException($"ErrorType without HTTP mapping: {error.Type}")
         };
 
-        return controller.Problem(detail: error.Message, statusCode: status, title: title);
+        var problemDetails = ApiProblemDetailsFactory.Create(
+            controller.HttpContext,
+            status,
+            title,
+            error.Message);
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = status,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 }
