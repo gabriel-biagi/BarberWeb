@@ -1,4 +1,6 @@
 using BarberWeb.Api.Middlewares;
+using BarberWeb.Application.Common;
+using BarberWeb.Application.Common.Interfaces;
 using BarberWeb.Application.Services;
 using BarberWeb.Application.Services.Interfaces;
 using BarberWeb.Domain.Interfaces;
@@ -45,6 +47,9 @@ builder.Services.AddScoped<IOpeningHoursService, OpeningHoursService>();
 builder.Services.AddScoped<IProfessionalServiceOfferingService, ProfessionalServiceOfferingService>();
 builder.Services.AddScoped<ISchedulingHoursService, SchedulingHoursService>();
 builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
+
+builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 

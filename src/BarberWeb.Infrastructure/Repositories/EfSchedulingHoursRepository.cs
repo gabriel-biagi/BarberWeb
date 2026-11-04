@@ -14,15 +14,12 @@ namespace BarberWeb.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset date)
+        public async Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset utcStart, DateTimeOffset utcEnd)
         {
-            DateTimeOffset startOfTheDay = date.Date;
-            DateTimeOffset startOfTheNextDay = startOfTheDay.AddDays(1);
-
-                 var schedulingHours = await _context.Appointments.Include(s => s.ProfessionalServiceOffering)
+            var schedulingHours = await _context.Appointments.Include(s => s.ProfessionalServiceOffering)
                 .Where(s => s.ProfessionalId == professionalId)
-                .Where(s => s.StartDate >= startOfTheDay)
-                .Where(s => s.StartDate < startOfTheNextDay)
+                .Where(s => s.StartDate >= utcStart)
+                .Where(s => s.StartDate < utcEnd)
                 .ToListAsync();
 
             return schedulingHours;

@@ -15,9 +15,9 @@ public class SchedulingHoursService : ISchedulingHoursService
         _openingHoursService = openingHoursService;
     }
     
-    public async Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset date)
+    public async Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset utcStart, DateTimeOffset utcEnd)
     {
-        var schedulingHours = await _repository.GetSchedulingHoursOfTheProfessionalByDay(professionalId, date);
+        var schedulingHours = await _repository.GetSchedulingHoursOfTheProfessionalByDay(professionalId, utcStart, utcEnd);
         return schedulingHours;
     }
 }

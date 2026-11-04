@@ -4,5 +4,5 @@ namespace BarberWeb.Application.Services.Interfaces;
 
 public interface ISchedulingHoursService
 {
-    Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset date);
+    Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset utcStart, DateTimeOffset utcEnd);
 }
