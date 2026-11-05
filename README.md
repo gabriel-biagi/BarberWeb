@@ -8,30 +8,30 @@ API REST para gerenciamento de uma barbearia, desenvolvida com **ASP.NET Core 8*
 
 ## Navegação
 
-- [Visão geral](#visao-geral)
-  - [Implementado no código](#implementado-no-codigo)
-  - [Ainda não implementado como fluxo completo](#ainda-nao-implementado-como-fluxo-completo)
+- [Visão geral](#visão-geral)
+  - [Implementado no código](#implementado-no-código)
+  - [Ainda não implementado como fluxo completo](#ainda-não-implementado-como-fluxo-completo)
 - [Arquitetura](#arquitetura)
-  - [Direção das dependências](#direcao-das-dependencias)
-  - [Fluxo de uma requisição](#fluxo-de-uma-requisicao)
-- [Domínio](#dominio)
+  - [Direção das dependências](#direção-das-dependências)
+  - [Fluxo de uma requisição](#fluxo-de-uma-requisição)
+- [Domínio](#domínio)
   - [Entidades](#entidades)
-  - [Regras de domínio presentes no código](#regras-de-dominio-presentes-no-codigo)
+  - [Regras de domínio presentes no código](#regras-de-domínio-presentes-no-código)
 - [Disponibilidade e datas](#disponibilidade-e-datas)
   - [`DateTimeProvider`](#datetimeprovider)
-  - [Como o cálculo atual de disponibilidade funciona](#como-o-calculo-atual-de-disponibilidade-funciona)
+  - [Como o cálculo atual de disponibilidade funciona](#como-o-cálculo-atual-de-disponibilidade-funciona)
   - [Fluxo esperado para criar um agendamento](#fluxo-esperado-para-criar-um-agendamento)
-- [Persistência](#persistencia)
-  - [Índices de unicidade](#indices-de-unicidade)
+- [Persistência](#persistência)
+  - [Índices de unicidade](#índices-de-unicidade)
 - [API](#api)
-  - [Padrão de retorno e tratamento de erros](#padrao-de-retorno-e-tratamento-de-erros)
+  - [Padrão de retorno e tratamento de erros](#padrão-de-retorno-e-tratamento-de-erros)
 - [Stack](#stack)
-- [Status atual e pendências técnicas](#status-atual-e-pendencias-tecnicas)
-  - [Já presente](#ja-presente)
-  - [Próximas implementações](#proximas-implementacoes)
-  - [Inconsistências e pontos de manutenção identificados](#inconsistencias-e-pontos-de-manutencao-identificados)
-- [Configuração e execução](#configuracao-e-execucao)
-  - [Pré-requisitos](#pre-requisitos)
+- [Status atual e pendências técnicas](#status-atual-e-pendências-técnicas)
+  - [Já presente](#já-presente)
+  - [Próximas implementações](#próximas-implementações)
+  - [Inconsistências e pontos de manutenção identificados](#inconsistências-e-pontos-de-manutenção-identificados)
+- [Configuração e execução](#configuração-e-execução)
+  - [Pré-requisitos](#pré-requisitos)
   - [Clone o projeto](#1-clone-o-projeto)
   - [Configure a connection string com User Secrets](#2-configure-a-connection-string-com-user-secrets)
   - [Aplique as migrations](#3-aplique-as-migrations)
@@ -55,7 +55,7 @@ O sistema está sendo construído para permitir que uma barbearia gerencie profi
 - `AvailableHoursService`, que calcula possíveis horários a partir do expediente, da duração do serviço e dos agendamentos consultados. Esse cálculo ainda não possui endpoint e tem limitações descritas em [Disponibilidade e datas](#disponibilidade-e-datas).
 - Persistência com EF Core e MySQL, incluindo migrations e índices de unicidade.
 - Retorno de operações da aplicação com `Result` e `Result<T>`, além de tratamento global de exceções na API.
-- Testes de domínio para `Professional`. Os testes de `ProfessionalService` precisam ser atualizados para refletir o uso atual de `Result<T>`; veja [Testes](#testes).
+- Testes de domínio para `Professional`. Os testes de `ProfessionalService` precisam ser atualizados para refletir o uso atual de `Result<T>`; veja [execução dos testes](#5-execute-os-testes).
 
 ### Ainda não implementado como fluxo completo
 
