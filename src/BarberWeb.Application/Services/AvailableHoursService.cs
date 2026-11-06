@@ -1,3 +1,4 @@
+
 using BarberWeb.Application.Common;
 using BarberWeb.Application.Common.Interfaces;
 using BarberWeb.Application.DTOs;
@@ -23,56 +24,74 @@ public class AvailableHoursService : IAvailableHoursService
         _professionalServiceOfferingService = professionalServiceOfferingService;
         _dateTimeProvider = dateTimeProvider;
     }
-    
-    public async Task<Result<IEnumerable<AvailableSlotDto>>> GetAvailableSlotsByProfessionalAndDateAsync(int professionalId, DateOnly localDate, int serviceId)
+
+    public async Task<Result<IEnumerable<AvailableSlotDto>>> GetAvailableSlotsByProfessionalAndDateAsync(
+        int professionalId,
+        DateOnly localDate,
+        int serviceId)
     {
         DayOfWeek dayOfWeek = localDate.DayOfWeek;
-        
-        // 1. Obtém a faixa UTC exata para o dia local usando o Provider (respeitando fuso e horário de verão)
+
+        // 1. Obtém a faixa UTC exata para o dia local.
         var (utcStart, utcEnd) = _dateTimeProvider.GetUtcRangeForLocalDay(localDate);
 
-        var openingHours = await _openingHoursService.GetOpeningHoursOfTheProfessionalByDay(professionalId, dayOfWeek);
-        
-        // 2. Passa a faixa UTC para o repositório buscar os agendamentos corretos
-        var schedulingHours = await _schedulingHoursService.GetSchedulingHoursOfTheProfessionalByDay(professionalId, utcStart, utcEnd);
-        
-        TimeSpan? professionalServiceOffering = await _professionalServiceOfferingService.GetTimeSpanByServiceIdAndProfessionalId(serviceId, professionalId);
+        var openingHours = await _openingHoursService
+            .GetOpeningHoursOfTheProfessionalByDay(professionalId, dayOfWeek);
+
+        // 2. Busca os agendamentos que ocupam o dia consultado.
+        var schedulingHours = await _schedulingHoursService
+            .GetSchedulingHoursOfTheProfessionalByDay(professionalId, utcStart, utcEnd);
+
+        TimeSpan? professionalServiceOffering =
+            await _professionalServiceOfferingService
+                .GetTimeSpanByServiceIdAndProfessionalId(serviceId, professionalId);
+
         if (professionalServiceOffering is null)
         {
-            return Result<IEnumerable<AvailableSlotDto>>.Failure(ErrorType.BusinessRule,
+            return Result<IEnumerable<AvailableSlotDto>>.Failure(
+                ErrorType.BusinessRule,
                 "The professional does not have a defined duration for the specific Service");
         }
 
-        List<AvailableSlotDto> availableSlotsDto = new List<AvailableSlotDto>();
+        List<AvailableSlotDto> availableSlotsDto = new();
+
         TimeSpan duration = professionalServiceOffering.Value;
-        
+
         foreach (var bloco in openingHours)
         {
             TimeOnly currentStart = bloco.StartTime;
             string professionalName = bloco.Professional.Name;
-            
+
             while (currentStart.Add(duration) <= bloco.EndTime)
             {
                 TimeOnly currentEnd = currentStart.Add(duration);
 
-                // 3. Converte os horários UTC salvos no banco de volta para o horário local da barbearia para comparar
-                bool isOccupied = schedulingHours.Any(s => 
-                {
-                    var appointmentStartLocal = _dateTimeProvider.ConvertUtcToLocalTime(s.StartDate);
-                    var appointmentEndLocal = _dateTimeProvider.ConvertUtcToLocalTime(s.EndDate);
+                // 3. Converte o intervalo candidato para UTC,
+                // preservando a data e o fuso da barbearia.
+                DateTimeOffset candidateStartUtc =
+                    _dateTimeProvider.ConvertLocalToUtc(localDate, currentStart);
 
-                    return currentStart < appointmentEndLocal && currentEnd > appointmentStartLocal;
-                });
+                DateTimeOffset candidateEndUtc =
+                    _dateTimeProvider.ConvertLocalToUtc(localDate, currentEnd);
+
+                // 4. Compara os intervalos completos em UTC.
+                bool isOccupied = schedulingHours.Any(s =>
+                    s.StartDate < candidateEndUtc &&
+                    s.EndDate > candidateStartUtc);
 
                 if (!isOccupied)
                 {
-                    availableSlotsDto.Add(new AvailableSlotDto(currentStart, currentEnd, professionalName));
+                    availableSlotsDto.Add(
+                        new AvailableSlotDto(
+                            currentStart,
+                            currentEnd,
+                            professionalName));
                 }
 
                 currentStart = currentEnd;
             }
-        } 
-        
+        }
+
         return Result<IEnumerable<AvailableSlotDto>>.Success(availableSlotsDto);
     }
 }
