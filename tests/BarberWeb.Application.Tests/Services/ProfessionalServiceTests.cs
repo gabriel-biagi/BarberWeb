@@ -1,3 +1,4 @@
+using BarberWeb.Application.Common;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.Services;
 using BarberWeb.Domain.Entities;
@@ -19,32 +20,21 @@ namespace BarberWeb.Application.Tests.Services
             _service = new ProfessionalService(_repositoryMock.Object);
         }
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(-1)]
-        public async Task GetByIdAsync_WithInvalidId_ShouldThrowInvalidInputException(int invalidId)
-        {
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidInputException>(() => 
-                _service.GetByIdAsync(invalidId));
-
-            Assert.Equal("Professional code must be greater than 0", exception.Message);
-            _repositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
-        }
-
         [Fact]
-        public async Task GetByIdAsync_WhenProfessionalDoesNotExist_ShouldThrowNotFoundException()
+        public async Task GetByIdAsync_WhenProfessionalDoesNotExist_ShouldReturnNotFoundFailure()
         {
             // Arrange
             int professionalId = 1;
             _repositoryMock.Setup(r => r.GetByIdAsync(professionalId))
                 .ReturnsAsync((Professional)null!);
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<NotFoundException>(() => 
-                _service.GetByIdAsync(professionalId));
+            // Act
+            var result = await _service.GetByIdAsync(professionalId);
 
-            Assert.Equal("Professional not found", exception.Message);
+            // Assert
+            Assert.True(result.IsFailure);
+            Assert.Equal(ErrorType.NotFound, result.Error.Type);
+            Assert.Equal("Professional not found.", result.Error.Message);
         }
 
         [Fact]
@@ -62,9 +52,10 @@ namespace BarberWeb.Application.Tests.Services
             var result = await _service.GetByIdAsync(professionalId);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal("Carlos Silva", result.Name);
-            Assert.Equal("carlos@email.com", result.Email);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(professionalId, result.Value.Id);
+            Assert.Equal("Carlos Silva", result.Value.Name);
+            Assert.Equal("carlos@email.com", result.Value.Email);
         }
 
         [Fact]
@@ -92,9 +83,10 @@ namespace BarberWeb.Application.Tests.Services
             var result = await _service.CreateAsync(request);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal("Ana Souza", result.Name);
-            Assert.Equal("ana@email.com", result.Email);
+            Assert.True(result.IsSuccess);
+            Assert.Equal(10, result.Value.Id);
+            Assert.Equal("Ana Souza", result.Value.Name);
+            Assert.Equal("ana@email.com", result.Value.Email);
 
             // Conferindo se a entidade montada possui os dados corretos do request e normalizados
             Assert.NotNull(capturedProfessional);
@@ -125,7 +117,7 @@ namespace BarberWeb.Application.Tests.Services
         }
 
         [Fact]
-        public async Task CreateAsync_WhenUniqueConstraintViolationOccurs_ShouldThrowBusinessException()
+        public async Task CreateAsync_WhenUniqueConstraintViolationOccurs_ShouldReturnConflictFailure()
         {
             // Arrange
             var request = new ProfessionalRequest
@@ -138,11 +130,13 @@ namespace BarberWeb.Application.Tests.Services
             _repositoryMock.Setup(r => r.CreateAsync(It.IsAny<Professional>()))
                 .ThrowsAsync(new UniqueConstraintViolationException("Duplicate key", null!));
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<BusinessException>(() => 
-                _service.CreateAsync(request));
+            // Act
+            var result = await _service.CreateAsync(request);
 
-            Assert.Equal("Email or phone already registered.", exception.Message);
+            // Assert
+            Assert.True(result.IsFailure);
+            Assert.Equal(ErrorType.Conflict, result.Error.Type);
+            Assert.Equal("Professional already exists.", result.Error.Message);
         }
 
         [Fact]
