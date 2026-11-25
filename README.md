@@ -47,7 +47,7 @@ O sistema está sendo construído para permitir que uma barbearia gerencie profi
 
 ### Implementado no código
 
-- Endpoints de profissionais para listar, consultar por ID, cadastrar e remover.
+- Endpoints de profissionais para listar, consultar por ID, cadastrar e desativar (exclusão lógica permanente, com cancelamento automático dos agendamentos futuros após confirmação).
 - Entidades de domínio para clientes, profissionais, serviços, ofertas de serviços, horários de funcionamento e agendamentos.
 - Associação entre profissional e serviço por meio de `ProfessionalServiceOffering`, com preço e duração próprios para cada combinação.
 - Modelagem de horários semanais por profissional, permitindo mais de um bloco de funcionamento no mesmo dia.
@@ -62,7 +62,8 @@ O sistema está sendo construído para permitir que uma barbearia gerencie profi
 - Endpoints e casos de uso para clientes, serviços, ofertas e horários de funcionamento.
 - Endpoint para consultar horários disponíveis.
 - Criação de agendamentos com validação completa de expediente, horários passados e conflitos.
-- Remarcação e cancelamento de agendamentos.
+- Remarcação de agendamentos e cancelamento solicitado por cliente ou profissional (hoje só existe o cancelamento automático causado pela desativação de um profissional).
+- Aviso automático ao cliente (SMS ou email) sobre cancelamentos.
 - Histórico de alterações de agendamento.
 - Autenticação e autorização.
 
@@ -118,11 +119,11 @@ MySQL
 | Entidade | Responsabilidade |
 |---|---|
 | `Customer` | Dados do cliente: nome, email e telefone. Mantém a coleção de agendamentos. |
-| `Professional` | Dados do profissional: nome, email e telefone. O telefone é normalizado para conter somente dígitos no construtor. |
+| `Professional` | Dados do profissional: nome, email e telefone. O telefone é normalizado para conter somente dígitos no construtor. Possui `DeletedAt` (exclusão lógica); ao ser desativado, email e telefone são anonimizados. |
 | `Service` | Catálogo de serviços, com nome e descrição. Não guarda preço nem duração fixos. |
 | `ProfessionalServiceOffering` | Associação entre profissional e serviço. Guarda o preço e a duração praticados por aquele profissional. |
 | `OpeningHours` | Bloco semanal de funcionamento de um profissional, identificado por dia da semana, horário inicial e horário final. Um dia pode ter vários blocos, por exemplo, antes e depois do almoço. |
-| `SchedulingHours` | Agendamento de um cliente para uma oferta específica, com início e fim representados por `DateTimeOffset`. Também guarda `ProfessionalId` para permitir o índice composto configurado no EF Core. |
+| `SchedulingHours` | Agendamento de um cliente para uma oferta específica, com início e fim representados por `DateTimeOffset`. Também guarda `ProfessionalId` para permitir o índice composto configurado no EF Core. Possui `CanceledAt` e `CancellationReason`: um agendamento cancelado é mantido no banco. |
 
 `SchedulingHours` referencia `ProfessionalServiceOffering`, e não diretamente `Service`, porque a oferta define o preço e a duração aplicáveis àquele profissional. O modelo atual ainda não salva um snapshot do preço ou da duração no momento do agendamento. Portanto, alterar uma oferta no futuro pode afetar os dados consultados por meio dessa relação.
 
@@ -134,7 +135,8 @@ MySQL
 - `Service`: nome entre 3 e 60 caracteres e descrição entre 5 e 200 caracteres.
 - `ProfessionalServiceOffering`: preço entre `0.01` e `9999.99` e duração maior que zero.
 - `OpeningHours`: horário final deve ser posterior ao horário inicial.
-- `SchedulingHours`: instante final deve ser posterior ao instante inicial.
+- `SchedulingHours`: instante final deve ser posterior ao instante inicial. `Cancel` registra o instante e o motivo, e recusa cancelar um agendamento já cancelado.
+- `Professional.Deactivate`: só aceita profissional persistido (`Id > 0`) e ainda ativo; define `DeletedAt` e anonimiza email e telefone.
 - Relacionamentos obrigatórios são verificados contra referências nulas nos construtores correspondentes.
 - Email e telefone de `Professional` possuem índices únicos no banco.
 
@@ -215,7 +217,8 @@ O cliente deverá informar a data e o horário no contexto local da barbearia. O
 
 - **ORM:** Entity Framework Core 8.
 - **Banco de dados:** MySQL, usando `Pomelo.EntityFrameworkCore.MySql`.
-- **Migrations:** `InitialMigration` e `AddUniqueIndexesOnProfessional`.
+- **Migrations:** `InitialMigration`, `AddUniqueIndexesOnProfessional` e `AddProfessionalSoftDeleteAndAppointmentCancellation`.
+- **Aplicar a migration da exclusão lógica:** ela adiciona `Professionals.DeletedAt`, `Appointments.CanceledAt` e `Appointments.CancellationReason` e troca as duas FKs de `Professional` para `Restrict`. Execute `dotnet ef database update` (veja [Configuração e execução](#configuração-e-execução)) antes de usar a API; sem isso, as consultas de profissionais falham porque a coluna `DeletedAt` não existe no banco.
 - **Tabelas criadas pela migration inicial:** `Customers`, `Professionals`, `Services`, `OpeningHours`, `ProfessionalOfferings` e `Appointments`.
 
 ### Índices de unicidade
@@ -224,6 +227,45 @@ O cliente deverá informar a data e o horário no contexto local da barbearia. O
 - `Appointments`: índice único composto por `(ProfessionalId, StartDate, EndDate)`.
 
 O índice de `Appointments` impede que dois registros tenham a mesma combinação de profissional, início e fim. **Ele não impede toda e qualquer sobreposição de intervalos.** A regra de sobreposição exige uma validação própria, além de tratamento de concorrência na gravação.
+
+---
+
+## Exclusão lógica de profissionais
+
+A API não apaga profissionais fisicamente. `DELETE /api/professional/{id}` **desativa** o profissional (exclusão lógica) e a desativação é **permanente: não existe reativação**. O registro permanece no banco para preservar o histórico de agendamentos.
+
+### Anonimização de email e telefone
+
+`Email` e `PhoneNumber` de `Professional` têm índices únicos. Para permitir que o mesmo email e telefone sejam cadastrados novamente depois da desativação, `Professional.Deactivate` **anonimiza** esses dois campos em vez de depender de índices condicionais (o MySQL trata `NULL` como distinto em índices únicos, então um índice composto com `DeletedAt` não garantiria a unicidade entre ativos):
+
+| Campo | Valor após a desativação | Observação |
+|---|---|---|
+| `Email` | `deleted-{id}@removed.invalid` | O TLD `.invalid` é reservado e nunca resolve. |
+| `PhoneNumber` | `000` + `{id}` com 10 dígitos (13 dígitos no total) | Nenhum DDD real começa com `000`, então não colide com números válidos. |
+| `Name` | Mantido | Não é único e é necessário para exibir o histórico. |
+| `DeletedAt` | Instante UTC da desativação | Também usado pelo filtro global. |
+
+Consequência: os dados de contato originais **não são recuperáveis** depois da desativação. Isso é intencional e coerente com a regra de que a exclusão é permanente.
+
+### Fluxo de desativação
+
+1. `DELETE /api/professional/{id}` sem confirmação:
+   - Sem agendamentos futuros: o profissional é desativado (`204`).
+   - Com agendamentos futuros: nada é alterado e a API retorna `422` informando a quantidade de agendamentos que serão cancelados.
+2. `DELETE /api/professional/{id}?confirm=true`: cancela automaticamente os agendamentos futuros (`CancellationReason.ProfessionalDeactivated`), anonimiza e desativa o profissional na **mesma transação** (`204`).
+3. Um profissional já desativado retorna `404`, pois o filtro global o oculta.
+
+"Futuro" significa `StartDate > agora` (instante obtido por `IDateTimeProvider.GetCurrentInstant()`). Um atendimento já iniciado e ainda em andamento **não** é cancelado.
+
+Os agendamentos cancelados **não são apagados**: recebem `CanceledAt` e `CancellationReason`. As consultas de disponibilidade ignoram agendamentos cancelados. Não há envio de aviso ao cliente nesta etapa; o motivo persistido permite implementar esse aviso (SMS ou email) no futuro.
+
+### Filtro global e integridade referencial
+
+- `Professional` possui um filtro global (`DeletedAt == null`): `GetById` e `GetAll` não retornam desativados. Para consultar histórico, use `IgnoreQueryFilters()`.
+- `Professional` é o lado obrigatório de `OpeningHours` e `ProfessionalServiceOffering`. O EF registra o aviso `10622` na inicialização (filtro global em relação obrigatória). Na prática, consultas que fazem `Include` de `Professional` não retornam registros de profissionais desativados, então a disponibilidade de um desativado é uma lista vazia, sem erro.
+- As FKs `OpeningHours → Professionals` e `ProfessionalOfferings → Professionals` usam `Restrict`: a exclusão física de um profissional com horários ou ofertas é recusada pelo banco.
+- As demais FKs continuam com `Cascade` (`ProfessionalOfferings → Services`, `Appointments → Customers`, `Appointments → ProfessionalOfferings`). **Risco conhecido:** excluir fisicamente um `Customer` ou um `Service` apaga agendamentos em cascata. Hoje não há endpoints para isso. Quando existirem, será necessária uma decisão específica, considerando que o profissional deve ser avisado e que o horário deixa de ficar ocupado.
+- O erro de FK do MySQL (código `1451`) ainda não é mapeado para `Result`/422. Se for implementado, deve ser registrado em log.
 
 ---
 
@@ -236,7 +278,7 @@ A rota do controller atual é `/api/professional` (o roteamento do ASP.NET Core 
 | `GET` | `/api/professional` | Lista os profissionais | `200` |
 | `GET` | `/api/professional/{id}` | Busca um profissional por ID | `200`, `400`, `404` |
 | `POST` | `/api/professional` | Cadastra um profissional | `201`, `400`, `409` |
-| `DELETE` | `/api/professional/{id}` | Remove um profissional | `204`, `400`, `404` |
+| `DELETE` | `/api/professional/{id}?confirm=false` | Desativa um profissional (exclusão lógica permanente). Com agendamentos futuros, exige `confirm=true`; veja [Exclusão lógica de profissionais](#exclusão-lógica-de-profissionais) | `204`, `400`, `404`, `422` |
 
 O corpo do `POST` recebe `name`, `email` e `phoneNumber`. A resposta de profissional contém `id`, `name` e `email`.
 
@@ -315,7 +357,12 @@ No cadastro de profissional, uma violação de índice único do MySQL (código 
 - [ ] Corrigir a busca de agendamentos por sobreposição e comparar intervalos completos, sem descartar a data.
 - [ ] Filtrar horários que já passaram.
 - [ ] Implementar criação de agendamentos com validação e proteção contra concorrência.
-- [ ] Implementar remarcação e cancelamento.
+- [ ] Aplicar no banco a migration da exclusão lógica (ver [Persistência](#persistência)).
+- [ ] Implementar remarcação e cancelamento solicitado (o cancelamento automático por desativação já existe).
+- [ ] Revisar o índice único `(ProfessionalId, StartDate, EndDate)`: agendamentos cancelados continuam ocupando essa combinação.
+- [ ] Proteger a desativação contra a criação concorrente de agendamentos entre a consulta de agendamentos futuros e a gravação (a criação de agendamentos ainda não existe).
+- [ ] Decidir a política de exclusão de `Customer` e `Service` (hoje `Cascade`).
+- [ ] Enviar aviso ao cliente (SMS ou email) em cancelamentos automáticos.
 - [ ] Definir como preservar o preço e a duração contratados quando uma oferta mudar.
 - [ ] Implementar histórico de movimentação.
 - [ ] Implementar autenticação e autorização.

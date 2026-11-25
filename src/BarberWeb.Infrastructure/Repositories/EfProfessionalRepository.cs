@@ -38,10 +38,15 @@ public class EfProfessionalRepository(AppDbContext context) : IProfessionalRepos
         return await context.Professionals.AsNoTracking().ToListAsync();
     }
 
-    public async Task DeleteAsync(Professional professional)
+    public async Task DeactivateAsync(Professional professional, IReadOnlyCollection<SchedulingHours> canceledAppointments)
     {
         ArgumentNullException.ThrowIfNull(professional);
-        context.Professionals.Remove(professional);
+        ArgumentNullException.ThrowIfNull(canceledAppointments);
+
+        // O profissional vem de uma consulta sem rastreamento; Update() o anexa como modificado.
+        // Os agendamentos já são rastreados (GetFutureActiveByProfessionalAsync) e suas alterações
+        // são detectadas automaticamente. Um único SaveChangesAsync grava tudo na mesma transação.
+        context.Professionals.Update(professional);
         await context.SaveChangesAsync();
     }
 

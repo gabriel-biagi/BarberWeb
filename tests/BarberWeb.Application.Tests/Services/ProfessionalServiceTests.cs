@@ -1,4 +1,5 @@
 using BarberWeb.Application.Common;
+using BarberWeb.Application.Common.Interfaces;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.Services;
 using BarberWeb.Domain.Entities;
@@ -11,13 +12,130 @@ namespace BarberWeb.Application.Tests.Services
 {
     public class ProfessionalServiceTests
     {
+        private static readonly DateTimeOffset Now = new(2026, 11, 30, 12, 0, 0, TimeSpan.Zero);
+
         private readonly Mock<IProfessionalRepository> _repositoryMock;
+        private readonly Mock<ISchedulingHoursRepository> _schedulingRepositoryMock;
+        private readonly Mock<IDateTimeProvider> _dateTimeProviderMock;
         private readonly ProfessionalService _service;
 
         public ProfessionalServiceTests()
         {
             _repositoryMock = new Mock<IProfessionalRepository>();
-            _service = new ProfessionalService(_repositoryMock.Object);
+            _schedulingRepositoryMock = new Mock<ISchedulingHoursRepository>();
+            _dateTimeProviderMock = new Mock<IDateTimeProvider>();
+            _dateTimeProviderMock.Setup(p => p.GetCurrentInstant()).Returns(Now);
+
+            _service = new ProfessionalService(
+                _repositoryMock.Object,
+                _schedulingRepositoryMock.Object,
+                _dateTimeProviderMock.Object);
+        }
+
+        private Professional GivenExistingProfessional(int id = 7)
+        {
+            var professional = new Professional("Carlos Silva", "carlos@email.com", "11977776666") { Id = id };
+            _repositoryMock.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(professional);
+            return professional;
+        }
+
+        private List<SchedulingHours> GivenFutureAppointments(Professional professional, int count)
+        {
+            var service = new Service("Corte", "Corte masculino") { Id = 1 };
+            var offering = new ProfessionalServiceOffering(professional, service, 50m, TimeSpan.FromMinutes(30));
+            var customer = new Customer("Maria Souza", "maria@email.com", "11966665555") { Id = 1 };
+
+            var appointments = Enumerable.Range(1, count)
+                .Select(i => new SchedulingHours(customer, offering, Now.AddDays(i), Now.AddDays(i).AddMinutes(30)))
+                .ToList();
+
+            _schedulingRepositoryMock
+                .Setup(r => r.GetFutureActiveByProfessionalAsync(professional.Id, Now))
+                .ReturnsAsync(appointments);
+
+            return appointments;
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WhenProfessionalDoesNotExist_ShouldReturnNotFoundFailure()
+        {
+            _repositoryMock.Setup(r => r.GetByIdAsync(7)).ReturnsAsync((Professional?)null);
+
+            var result = await _service.DeleteAsync(7);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ErrorType.NotFound, result.Error.Type);
+            _repositoryMock.Verify(r => r.DeactivateAsync(It.IsAny<Professional>(), It.IsAny<IReadOnlyCollection<SchedulingHours>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithoutFutureAppointments_ShouldDeactivateAndAnonymizeWithoutConfirmation()
+        {
+            var professional = GivenExistingProfessional();
+            _schedulingRepositoryMock
+                .Setup(r => r.GetFutureActiveByProfessionalAsync(7, Now))
+                .ReturnsAsync(new List<SchedulingHours>());
+
+            var result = await _service.DeleteAsync(7);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(Now, professional.DeletedAt);
+            Assert.Equal("deleted-7@removed.invalid", professional.Email);
+            Assert.Equal("Carlos Silva", professional.Name);
+            _repositoryMock.Verify(r => r.DeactivateAsync(
+                professional,
+                It.Is<IReadOnlyCollection<SchedulingHours>>(a => a.Count == 0)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithFutureAppointmentsAndNoConfirmation_ShouldReturnBusinessRuleFailureAndChangeNothing()
+        {
+            var professional = GivenExistingProfessional();
+            var appointments = GivenFutureAppointments(professional, 2);
+
+            var result = await _service.DeleteAsync(7, confirmCancellation: false);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(ErrorType.BusinessRule, result.Error.Type);
+            Assert.Contains("2 future appointment(s)", result.Error.Message);
+            Assert.Contains("confirm=true", result.Error.Message);
+            Assert.Null(professional.DeletedAt);
+            Assert.All(appointments, a => Assert.False(a.IsCanceled));
+            _repositoryMock.Verify(r => r.DeactivateAsync(It.IsAny<Professional>(), It.IsAny<IReadOnlyCollection<SchedulingHours>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithFutureAppointmentsAndConfirmation_ShouldCancelAllAndDeactivate()
+        {
+            var professional = GivenExistingProfessional();
+            var appointments = GivenFutureAppointments(professional, 2);
+
+            var result = await _service.DeleteAsync(7, confirmCancellation: true);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(Now, professional.DeletedAt);
+            Assert.All(appointments, a =>
+            {
+                Assert.True(a.IsCanceled);
+                Assert.Equal(Now, a.CanceledAt);
+                Assert.Equal(CancellationReason.ProfessionalDeactivated, a.CancellationReason);
+            });
+            _repositoryMock.Verify(r => r.DeactivateAsync(
+                professional,
+                It.Is<IReadOnlyCollection<SchedulingHours>>(a => a.Count == 2)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ShouldQueryFutureAppointmentsUsingCurrentInstant()
+        {
+            GivenExistingProfessional();
+            _schedulingRepositoryMock
+                .Setup(r => r.GetFutureActiveByProfessionalAsync(7, Now))
+                .ReturnsAsync(new List<SchedulingHours>());
+
+            await _service.DeleteAsync(7);
+
+            _schedulingRepositoryMock.Verify(r => r.GetFutureActiveByProfessionalAsync(7, Now), Times.Once);
         }
 
         [Fact]

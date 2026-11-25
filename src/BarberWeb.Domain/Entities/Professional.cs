@@ -14,6 +14,14 @@ namespace BarberWeb.Domain.Entities
 
         public string PhoneNumber { get; private set; }
 
+        /// <summary>
+        /// Instante da desativação (exclusão lógica). Nulo enquanto o profissional está ativo.
+        /// A desativação é permanente: não existe reativação.
+        /// </summary>
+        public DateTimeOffset? DeletedAt { get; private set; }
+
+        public bool IsDeleted => DeletedAt.HasValue;
+
         public Professional(string name, string email, string phoneNumber)
         {
             if (CheckInvalidName(name))
@@ -36,7 +44,29 @@ namespace BarberWeb.Domain.Entities
             PhoneNumber = normalizedPhone;
         }
 
-        
+
+        /// <summary>
+        /// Desativa o profissional de forma permanente (exclusão lógica) e anonimiza email e telefone,
+        /// liberando esses valores, protegidos por índice único, para um novo cadastro.
+        /// O nome é mantido para preservar o histórico de agendamentos.
+        /// </summary>
+        public void Deactivate(DateTimeOffset now)
+        {
+            if (IsDeleted)
+            {
+                throw new BusinessException("Professional is already deactivated.");
+            }
+
+            if (Id <= 0)
+            {
+                throw new InvalidOperationException("Only a persisted professional can be deactivated.");
+            }
+
+            DeletedAt = now;
+            Email = $"deleted-{Id}@removed.invalid"; // TLD .invalid é reservado e nunca resolve
+            PhoneNumber = $"000{Id:D10}";            // 13 dígitos; nenhum DDD real começa com 000
+        }
+
         private bool CheckInvalidName(string field)
         {
             return (string.IsNullOrWhiteSpace(field) || field.Length < 3 || field.Length > 60);

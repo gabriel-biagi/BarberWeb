@@ -58,13 +58,21 @@ public class ProfessionalController : ControllerBase
         return CreatedAtRoute("GetByIdAsync", new { id = response.Value.Id }, response.Value);
     }
 
+    /// <summary>
+    /// Desativa o profissional de forma permanente (exclusão lógica, sem reativação).
+    /// Com agendamentos futuros, retorna 422 informando a quantidade; repita com confirm=true
+    /// para cancelá-los automaticamente e concluir a desativação.
+    /// </summary>
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteAsync([Range(1, int.MaxValue, ErrorMessage = "Id must be greater than zero.")] int id)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> DeleteAsync(
+        [Range(1, int.MaxValue, ErrorMessage = "Id must be greater than zero.")] int id,
+        [FromQuery] bool confirm = false)
     {
-        var response = await _service.DeleteAsync(id);
+        var response = await _service.DeleteAsync(id, confirm);
 
         if (response.IsFailure)
             return this.ToProblem(response);

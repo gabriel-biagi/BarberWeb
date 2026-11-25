@@ -9,5 +9,9 @@ public interface IProfessionalService
     Task<Result<ProfessionalResponse>> GetByIdAsync(int id);
     Task<Result<ProfessionalResponse>> CreateAsync(ProfessionalRequest professionalRequest);
     Task<Result<List<ProfessionalResponse>>> GetAllAsync();
-    Task<Result> DeleteAsync(int id);
+    /// <summary>
+    /// Desativa o profissional (exclusão lógica, permanente). Se houver agendamentos futuros, a operação
+    /// só prossegue com <paramref name="confirmCancellation"/> = true, e esses agendamentos são cancelados.
+    /// </summary>
+    Task<Result> DeleteAsync(int id, bool confirmCancellation = false);
 }
