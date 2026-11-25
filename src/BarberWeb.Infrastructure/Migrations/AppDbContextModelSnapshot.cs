@@ -82,6 +82,9 @@ namespace BarberWeb.Infrastructure.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("varchar(255)");
@@ -142,6 +145,12 @@ namespace BarberWeb.Infrastructure.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTimeOffset?>("CanceledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("CancellationReason")
+                        .HasColumnType("int");
+
                     b.Property<int>("CustomerId")
                         .HasColumnType("int");
 
@@ -195,7 +204,7 @@ namespace BarberWeb.Infrastructure.Migrations
                     b.HasOne("BarberWeb.Domain.Entities.Professional", "Professional")
                         .WithMany()
                         .HasForeignKey("ProfessionalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Professional");
@@ -206,7 +215,7 @@ namespace BarberWeb.Infrastructure.Migrations
                     b.HasOne("BarberWeb.Domain.Entities.Professional", "Professional")
                         .WithMany()
                         .HasForeignKey("ProfessionalId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("BarberWeb.Domain.Entities.Service", "Service")

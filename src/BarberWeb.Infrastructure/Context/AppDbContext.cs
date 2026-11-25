@@ -26,6 +26,27 @@ namespace BarberWeb.Infrastructure.Context
                 .IsUnique();
             modelBuilder.Entity<Professional>().HasIndex(p => p.Email).IsUnique();
             modelBuilder.Entity<Professional>().HasIndex(p => p.PhoneNumber).IsUnique();
+
+            // Exclusão lógica: profissionais desativados somem das consultas.
+            // Use IgnoreQueryFilters() quando o histórico for necessário.
+            // Como Professional é o lado obrigatório de OpeningHours e ProfessionalServiceOffering,
+            // o EF registra um aviso de modelo (filtro em relação obrigatória). Consultas com Include de
+            // Professional não retornam registros de profissionais desativados (comportamento desejado).
+            modelBuilder.Entity<Professional>().HasQueryFilter(p => p.DeletedAt == null);
+
+            // Evita que a exclusão física de um profissional apague horários e ofertas
+            // (e, por consequência, agendamentos) em cascata.
+            modelBuilder.Entity<OpeningHours>()
+                .HasOne(o => o.Professional)
+                .WithMany()
+                .HasForeignKey(o => o.ProfessionalId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProfessionalServiceOffering>()
+                .HasOne(o => o.Professional)
+                .WithMany()
+                .HasForeignKey(o => o.ProfessionalId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

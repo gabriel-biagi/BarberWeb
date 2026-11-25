@@ -1,4 +1,5 @@
 using BarberWeb.Application.Common;
+using BarberWeb.Application.Common.Interfaces;
 using BarberWeb.Application.DTOs.Request;
 using BarberWeb.Application.DTOs.Response;
 using BarberWeb.Application.Services.Interfaces;
@@ -11,10 +12,17 @@ namespace BarberWeb.Application.Services;
 public class ProfessionalService : IProfessionalService
 {
     private readonly IProfessionalRepository _repository;
+    private readonly ISchedulingHoursRepository _schedulingHoursRepository;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
-    public ProfessionalService(IProfessionalRepository repository)
+    public ProfessionalService(
+        IProfessionalRepository repository,
+        ISchedulingHoursRepository schedulingHoursRepository,
+        IDateTimeProvider dateTimeProvider)
     {
         _repository = repository;
+        _schedulingHoursRepository = schedulingHoursRepository;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<Result<ProfessionalResponse>> GetByIdAsync(int id)
@@ -48,13 +56,29 @@ public class ProfessionalService : IProfessionalService
         }
     }
 
-    public async Task<Result> DeleteAsync(int id)
+    public async Task<Result> DeleteAsync(int id, bool confirmCancellation = false)
     {
         var professional = await _repository.GetByIdAsync(id);
         if (professional == null)
             return Result.Failure(ErrorType.NotFound, "Professional not found.");
 
-        await _repository.DeleteAsync(professional);
+        var now = _dateTimeProvider.GetCurrentInstant();
+        var futureAppointments = await _schedulingHoursRepository.GetFutureActiveByProfessionalAsync(id, now);
+
+        if (futureAppointments.Count > 0 && !confirmCancellation)
+        {
+            return Result.Failure(
+                ErrorType.BusinessRule,
+                $"Professional has {futureAppointments.Count} future appointment(s) that will be canceled " +
+                "if the professional is deactivated. Repeat the request with confirm=true to proceed.");
+        }
+
+        foreach (var appointment in futureAppointments)
+            appointment.Cancel(now, CancellationReason.ProfessionalDeactivated);
+
+        professional.Deactivate(now);
+
+        await _repository.DeactivateAsync(professional, futureAppointments);
         return Result.Success();
     }
 
