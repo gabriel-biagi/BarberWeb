@@ -328,6 +328,16 @@ No cadastro de profissional, uma violação de índice único do MySQL (código 
 - `SchedulingHoursService` recebe `IOpeningHoursService` no construtor, mas o campo injetado não é utilizado no código atual.
 - Os testes em `ProfessionalServiceTests` ainda refletem uma implementação anterior: esperam exceções em cenários que agora retornam `Result<T>` e acessam propriedades diretamente no resultado, em vez de usar `Value`. Eles precisam ser reescritos antes de considerar a suíte alinhada ao código atual.
 
+### Bugs conhecidos (documentados em testes, ainda não corrigidos)
+
+Os testes abaixo existem em `AvailableHoursServiceTests` como `[Fact(Skip = "KnownBug ...")]` com `[Trait("Category", "KnownBug")]`. A suíte continua verde, e o relatório do `dotnet test` os lista como ignorados, com o motivo. Para reproduzir um bug, remova o `Skip` do teste correspondente, **exceto os dois primeiros, que travam a execução**.
+
+1. **`TimeOnly.Add` dá a volta à meia-noite** (`AvailableHoursService`, laço `while`). Em um bloco 20:00-23:00 com serviço de 4h, `20:00 + 4h = 00:00`, e `00:00 <= 23:00` passa na condição. Além de gerar slot fora do bloco, os horários 00:00, 04:00, ..., 20:00 também passam, então o laço **nunca termina**. Confirmado ao executar o teste sem o `Skip`: a execução travou. Correção prevista: comparar em `TimeSpan` (`start.ToTimeSpan() + duration <= end.ToTimeSpan()`), mantendo o slot dentro do bloco e, portanto, dentro do mesmo dia.
+2. **Duração de 24h causa laço infinito.** `currentStart.Add(24h)` volta ao mesmo horário. O domínio só exige `time > 0`. Correção prevista: validar no `AvailableHoursService` que a duração é menor que 24h, retornando `ErrorType.BusinessRule`. Não haverá teto fixo por enquanto.
+3. **Agendamentos que cruzam a meia-noite não são considerados** (`EfSchedulingHoursRepository`). A consulta filtra por `StartDate >= início do dia` e `StartDate < fim do dia`, então um agendamento que começa no dia anterior e termina no dia consultado é ignorado. Não há teste automatizado porque exige banco de dados e não existe projeto de testes de infraestrutura. Correção prevista: filtrar por sobreposição (`StartDate < fim do dia && EndDate > início do dia`).
+
+Para listar só estes testes: `dotnet test --filter "Category=KnownBug"`.
+
 ---
 
 ## Configuração e execução
