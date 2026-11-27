@@ -4,7 +4,7 @@ namespace BarberWeb.Domain.Interfaces
 {
     public interface ISchedulingHoursRepository
     {
-        /// <summary>Agendamentos não cancelados do profissional que começam dentro do intervalo UTC informado.</summary>
+        /// <summary>Agendamentos não cancelados do profissional que se sobrepõem ao intervalo UTC informado.</summary>
         Task<IEnumerable<SchedulingHours>> GetSchedulingHoursOfTheProfessionalByDay(int professionalId, DateTimeOffset utcStart, DateTimeOffset utcEnd);
 
         /// <summary>

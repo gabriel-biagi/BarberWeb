@@ -8,6 +8,8 @@ namespace BarberWeb.Application.Services;
 
 public class AvailableHoursService : IAvailableHoursService
 {
+    private static readonly TimeSpan MaxServiceDuration = TimeSpan.FromHours(24);
+
     private readonly IOpeningHoursService _openingHoursService;
     private readonly ISchedulingHoursService _schedulingHoursService;
     private readonly IProfessionalServiceOfferingService _professionalServiceOfferingService;
@@ -53,18 +55,33 @@ public class AvailableHoursService : IAvailableHoursService
                 "The professional does not have a defined duration for the specific Service");
         }
 
-        List<AvailableSlotDto> availableSlotsDto = new();
-
         TimeSpan duration = professionalServiceOffering.Value;
+
+        // Um atendimento precisa começar e terminar no mesmo dia. Duração zero, negativa
+        // ou de 24h ou mais nunca cabe em um bloco e faria o laço abaixo não terminar.
+        if (duration <= TimeSpan.Zero || duration >= MaxServiceDuration)
+        {
+            return Result<IEnumerable<AvailableSlotDto>>.Failure(
+                ErrorType.BusinessRule,
+                "The service duration must be greater than zero and less than 24 hours.");
+        }
+
+        List<AvailableSlotDto> availableSlotsDto = new();
 
         foreach (var bloco in openingHours)
         {
-            TimeOnly currentStart = bloco.StartTime;
+            // A aritmética é feita em TimeSpan, e não com TimeOnly.Add, porque TimeOnly.Add
+            // dá a volta à meia-noite (23:00 + 2h = 01:00), o que gerava slots fora do bloco
+            // e podia fazer o laço nunca terminar. Em TimeSpan, 23:00 + 2h = 25:00, que é
+            // maior que o fim do bloco e encerra o laço.
+            TimeSpan blockEnd = bloco.EndTime.ToTimeSpan();
+            TimeSpan slotStart = bloco.StartTime.ToTimeSpan();
             string professionalName = bloco.Professional.Name;
 
-            while (currentStart.Add(duration) <= bloco.EndTime)
+            while (slotStart + duration <= blockEnd)
             {
-                TimeOnly currentEnd = currentStart.Add(duration);
+                TimeOnly currentStart = TimeOnly.FromTimeSpan(slotStart);
+                TimeOnly currentEnd = TimeOnly.FromTimeSpan(slotStart + duration);
 
                 // 3. Converte o intervalo candidato para UTC,
                 // preservando a data e o fuso da barbearia.
@@ -88,7 +105,7 @@ public class AvailableHoursService : IAvailableHoursService
                             professionalName));
                 }
 
-                currentStart = currentEnd;
+                slotStart += duration;
             }
         }
 

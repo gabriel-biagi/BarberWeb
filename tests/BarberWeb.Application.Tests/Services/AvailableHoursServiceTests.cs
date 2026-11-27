@@ -14,13 +14,10 @@ namespace BarberWeb.Application.Tests.Services;
 /// então estes testes validam a lógica de slots, e não a conversão de fuso
 /// (isso é coberto em DateTimeProviderTests).
 ///
-/// Bugs conhecidos documentados abaixo (testes com Skip, sem correção por decisão do projeto):
-///  1. TimeOnly.Add dá a volta à meia-noite: gera slot fora do bloco e, em casos como bloco 20:00-23:00
-///     com serviço de 4h, o laço nunca termina (confirmado: o teste travou ao remover o Skip).
-///  2. Duração de 24 h causa laço infinito (por isso o teste NUNCA deve ser executado sem a correção).
-///  3. EfSchedulingHoursRepository filtra apenas por StartDate dentro do dia, então agendamentos
-///     que começam no dia anterior e atravessam a meia-noite não são considerados.
-///     Não há teste porque exige banco de dados (não existe projeto de testes de infraestrutura).
+/// Os bugs de laço infinito (TimeOnly.Add dando a volta à meia-noite e duração de 24h) foram
+/// corrigidos; os testes de regressão no fim do arquivo usam Timeout para não travar a suíte
+/// caso o problema volte. A consulta por sobreposição de agendamentos que atravessam a
+/// meia-noite está em EfSchedulingHoursRepository e não é coberta aqui (exige banco).
 /// </summary>
 public class AvailableHoursServiceTests
 {
@@ -219,15 +216,13 @@ public class AvailableHoursServiceTests
         Assert.Equal(expectedStarts, Starts(result.Value));
     }
 
-    // ---------- Bugs conhecidos (documentados, não corrigidos) ----------
+    // ---------- Regressões dos bugs corrigidos (laço infinito e virada da meia-noite) ----------
+    // Timeout: se o laço voltar a não terminar, o teste falha em vez de travar a suíte.
 
-    [Fact(Skip = "KnownBug #1: TimeOnly.Add dá a volta à meia-noite. Em um bloco 20:00-23:00 com serviço de 4h, " +
-                 "20:00 + 4h = 00:00 e 00:00 <= 23:00, gerando um slot fora do bloco; como 00:00, 04:00, ..., 20:00 " +
-                 "também passam na condição, o laço NUNCA termina (confirmado: a execução travou). " +
-                 "NÃO remova o Skip antes de corrigir (comparar em TimeSpan, dentro do bloco).")]
-    [Trait("Category", "KnownBug")]
-    public async Task KnownBug_DurationCrossingMidnight_ShouldNotGenerateSlotOutsideTheBlock()
+    [Fact(Timeout = 5000)]
+    public async Task WhenDurationWouldCrossMidnight_ShouldNotGenerateSlotOutsideTheBlock()
     {
+        // Antes: 20:00 + 4h = 00:00 (TimeOnly dá a volta) e 00:00 <= 23:00, laço infinito.
         GivenOpeningHours(("20:00", "23:00"));
         GivenAppointments();
         GivenOffering(TimeSpan.FromHours(4));
@@ -238,19 +233,62 @@ public class AvailableHoursServiceTests
         Assert.Empty(result.Value);
     }
 
-    [Fact(Skip = "KnownBug #2: duração de 24h causa laço infinito (currentStart.Add(24h) volta ao mesmo horário). " +
-                 "NÃO remova o Skip antes de implementar a validação 'duração < 24h' no serviço, " +
-                 "ou a execução travará e consumirá memória.")]
-    [Trait("Category", "KnownBug")]
-    public async Task KnownBug_DurationOf24Hours_ShouldReturnBusinessRuleFailure()
+    [Fact(Timeout = 5000)]
+    public async Task WhenBlockEndsLateInTheDay_ShouldStopAtTheEndOfTheBlock()
+    {
+        // Antes: 23:00 + 1h = 00:00 <= 23:59, o laço não parava.
+        GivenOpeningHours(("22:00", "23:59"));
+        GivenAppointments();
+        GivenOffering(TimeSpan.FromHours(1));
+
+        var result = await WhenSearching();
+
+        var slot = Assert.Single(result.Value);
+        Assert.Equal(new TimeOnly(22, 0), slot.Start);
+        Assert.Equal(new TimeOnly(23, 0), slot.End);
+    }
+
+    [Fact(Timeout = 5000)]
+    public async Task WhenSlotEndsExactlyAtTheEndOfTheBlock_ShouldIncludeIt()
+    {
+        GivenOpeningHours(("21:00", "23:30"));
+        GivenAppointments();
+        GivenOffering(TimeSpan.FromMinutes(50));
+
+        var result = await WhenSearching();
+
+        Assert.Equal(new[] { "21:00", "21:50", "22:40" }, Starts(result.Value));
+        Assert.Equal(new TimeOnly(23, 30), result.Value.Last().End);
+    }
+
+    [Theory(Timeout = 5000)]
+    [InlineData(24 * 60)]   // exatamente 24h
+    [InlineData(25 * 60)]   // mais de 24h
+    [InlineData(0)]         // zero (o domínio impede, mas o dado pode vir do banco)
+    [InlineData(-30)]       // negativa
+    public async Task WithInvalidServiceDuration_ShouldReturnBusinessRuleFailure(int minutes)
     {
         GivenOpeningHours(("09:00", "10:00"));
         GivenAppointments();
-        GivenOffering(TimeSpan.FromHours(24));
+        GivenOffering(TimeSpan.FromMinutes(minutes));
 
         var result = await WhenSearching();
 
         Assert.True(result.IsFailure);
         Assert.Equal(ErrorType.BusinessRule, result.Error.Type);
+    }
+
+    [Fact(Timeout = 5000)]
+    public async Task WithDurationJustBelow24Hours_ShouldNotFailButFitsNoRegularBlock()
+    {
+        GivenOpeningHours(("00:00", "23:59"));
+        GivenAppointments();
+        GivenOffering(TimeSpan.FromHours(24) - TimeSpan.FromMinutes(1));
+
+        var result = await WhenSearching();
+
+        var slot = Assert.Single(result.Value);
+        Assert.Equal(new TimeOnly(0, 0), slot.Start);
+        Assert.Equal(new TimeOnly(23, 59), slot.End);
     }
 }

@@ -19,8 +19,9 @@ namespace BarberWeb.Infrastructure.Repositories
             var schedulingHours = await _context.Appointments.Include(s => s.ProfessionalServiceOffering)
                 .Where(s => s.ProfessionalId == professionalId)
                 .Where(s => s.CanceledAt == null)
-                .Where(s => s.StartDate >= utcStart)
-                .Where(s => s.StartDate < utcEnd)
+                // Sobreposição com o dia consultado: inclui agendamentos que começam no dia
+                // anterior e terminam dentro do dia (atravessando a meia-noite).
+                .Where(s => s.StartDate < utcEnd && s.EndDate > utcStart)
                 .ToListAsync();
 
             return schedulingHours;

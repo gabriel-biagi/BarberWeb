@@ -191,8 +191,9 @@ Isso impede, por exemplo, oferecer `09:00–09:30` quando já existe um atendime
 
 **Importante: o cálculo é uma primeira implementação e ainda não deve ser tratado como uma validação definitiva para confirmar agendamentos.** Há limitações no código atual:
 
-- `EfSchedulingHoursRepository` filtra os registros pelo `StartDate` estar dentro do dia (`StartDate >= utcStart && StartDate < utcEnd`). Isso não encontra um agendamento iniciado antes do dia consultado e que ainda avance sobre ele. Uma consulta por sobreposição precisa considerar também `EndDate > utcStart`.
-- `AvailableHoursService` converte os instantes dos agendamentos para `TimeOnly`, descartando a data antes de comparar os intervalos. Para comparações robustas, os intervalos candidatos e existentes devem ser comparados como instantes completos, considerando o fuso da barbearia.
+- `EfSchedulingHoursRepository` busca os agendamentos não cancelados que se **sobrepõem** ao dia consultado (`StartDate < fim do dia && EndDate > início do dia`), incluindo os que começam no dia anterior e atravessam a meia-noite.
+- `AvailableHoursService` compara os intervalos candidatos e os agendamentos como instantes completos em UTC, sem descartar a data.
+- A duração do serviço precisa ser maior que zero e menor que 24h; caso contrário, o cálculo retorna `ErrorType.BusinessRule` (`422`). Não há teto fixo além disso: um horário só é oferecido se começar e terminar dentro do bloco de funcionamento, e portanto no mesmo dia.
 - `GetCurrentInstant()` existe, mas o cálculo atual não o utiliza para remover horários que já passaram no dia consultado.
 - O passo de geração dos horários é a própria duração do serviço. Assim, um serviço de 45 minutos gera opções em intervalos de 45 minutos. Caso a regra desejada seja oferecer horários a cada 15 minutos, por exemplo, o passo precisa ser uma configuração separada da duração do atendimento.
 - A consulta de disponibilidade não reserva o horário. A confirmação futura precisará validar novamente o conflito no servidor e tratar requisições concorrentes.
@@ -354,7 +355,7 @@ No cadastro de profissional, uma violação de índice único do MySQL (código 
 - [ ] Atualizar os testes de `ProfessionalService` para o contrato atual de `Result<T>`.
 - [ ] Criar controllers e DTOs para clientes, serviços, ofertas e horários de funcionamento.
 - [ ] Expor o endpoint de consulta de horários disponíveis.
-- [ ] Corrigir a busca de agendamentos por sobreposição e comparar intervalos completos, sem descartar a data.
+- [x] Corrigir a busca de agendamentos por sobreposição e comparar intervalos completos, sem descartar a data.
 - [ ] Filtrar horários que já passaram.
 - [ ] Implementar criação de agendamentos com validação e proteção contra concorrência.
 - [ ] Aplicar no banco a migration da exclusão lógica (ver [Persistência](#persistência)).
@@ -375,15 +376,13 @@ No cadastro de profissional, uma violação de índice único do MySQL (código 
 - `SchedulingHoursService` recebe `IOpeningHoursService` no construtor, mas o campo injetado não é utilizado no código atual.
 - Os testes em `ProfessionalServiceTests` ainda refletem uma implementação anterior: esperam exceções em cenários que agora retornam `Result<T>` e acessam propriedades diretamente no resultado, em vez de usar `Value`. Eles precisam ser reescritos antes de considerar a suíte alinhada ao código atual.
 
-### Bugs conhecidos (documentados em testes, ainda não corrigidos)
+### Bugs corrigidos no cálculo de disponibilidade
 
-Os testes abaixo existem em `AvailableHoursServiceTests` como `[Fact(Skip = "KnownBug ...")]` com `[Trait("Category", "KnownBug")]`. A suíte continua verde, e o relatório do `dotnet test` os lista como ignorados, com o motivo. Para reproduzir um bug, remova o `Skip` do teste correspondente, **exceto os dois primeiros, que travam a execução**.
+Estes bugs foram documentados em testes com `Skip` e depois corrigidos. Os testes de regressão ficam no fim de `AvailableHoursServiceTests` e usam `Timeout`, para que a suíte falhe em vez de travar se o problema voltar.
 
-1. **`TimeOnly.Add` dá a volta à meia-noite** (`AvailableHoursService`, laço `while`). Em um bloco 20:00-23:00 com serviço de 4h, `20:00 + 4h = 00:00`, e `00:00 <= 23:00` passa na condição. Além de gerar slot fora do bloco, os horários 00:00, 04:00, ..., 20:00 também passam, então o laço **nunca termina**. Confirmado ao executar o teste sem o `Skip`: a execução travou. Correção prevista: comparar em `TimeSpan` (`start.ToTimeSpan() + duration <= end.ToTimeSpan()`), mantendo o slot dentro do bloco e, portanto, dentro do mesmo dia.
-2. **Duração de 24h causa laço infinito.** `currentStart.Add(24h)` volta ao mesmo horário. O domínio só exige `time > 0`. Correção prevista: validar no `AvailableHoursService` que a duração é menor que 24h, retornando `ErrorType.BusinessRule`. Não haverá teto fixo por enquanto.
-3. **Agendamentos que cruzam a meia-noite não são considerados** (`EfSchedulingHoursRepository`). A consulta filtra por `StartDate >= início do dia` e `StartDate < fim do dia`, então um agendamento que começa no dia anterior e termina no dia consultado é ignorado. Não há teste automatizado porque exige banco de dados e não existe projeto de testes de infraestrutura. Correção prevista: filtrar por sobreposição (`StartDate < fim do dia && EndDate > início do dia`).
-
-Para listar só estes testes: `dotnet test --filter "Category=KnownBug"`.
+1. **`TimeOnly.Add` dava a volta à meia-noite** (`AvailableHoursService`). Em um bloco 20:00-23:00 com serviço de 4h, `20:00 + 4h = 00:00` passava na condição `<= 23:00`, gerando slots fora do bloco e um laço que **nunca terminava**. Correção: a geração dos slots usa `TimeSpan` (`início + duração <= fim do bloco`).
+2. **Duração de 24h causava laço infinito.** Correção: o `AvailableHoursService` recusa duração `<= 0` ou `>= 24h` com `ErrorType.BusinessRule`.
+3. **Agendamentos que atravessam a meia-noite eram ignorados** (`EfSchedulingHoursRepository`), porque a consulta filtrava só por `StartDate` dentro do dia. Correção: a consulta usa sobreposição (`StartDate < fim do dia && EndDate > início do dia`). Não há teste automatizado, porque exige banco e não existe projeto de testes de infraestrutura; o SQL gerado foi conferido com `ToQueryString()`.
 
 ---
 
