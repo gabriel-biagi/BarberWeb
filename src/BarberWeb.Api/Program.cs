@@ -41,12 +41,14 @@ builder.Services.AddScoped<IOpeningHoursRepository, EfOpeningHoursRepository>();
 builder.Services.AddScoped<ISchedulingHoursRepository, EfSchedulingHoursRepository>();
 builder.Services.AddScoped<IProfessionalServiceOfferingRepository, EfProfessionalServiceOfferingRepository>();
 builder.Services.AddScoped<IProfessionalRepository, EfProfessionalRepository>();
+builder.Services.AddScoped<IServiceRepository, EfServiceRepository>();
 //Services
 builder.Services.AddScoped<IAvailableHoursService, AvailableHoursService>();
 builder.Services.AddScoped<IOpeningHoursService, OpeningHoursService>();
 builder.Services.AddScoped<IProfessionalServiceOfferingService, ProfessionalServiceOfferingService>();
 builder.Services.AddScoped<ISchedulingHoursService, SchedulingHoursService>();
 builder.Services.AddScoped<IProfessionalService, ProfessionalService>();
+builder.Services.AddScoped<ICatalogServiceService, CatalogServiceService>();
 
 builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 builder.Services.AddSingleton(TimeProvider.System);
