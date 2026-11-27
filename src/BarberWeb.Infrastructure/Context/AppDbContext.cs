@@ -27,6 +27,13 @@ namespace BarberWeb.Infrastructure.Context
             modelBuilder.Entity<Professional>().HasIndex(p => p.Email).IsUnique();
             modelBuilder.Entity<Professional>().HasIndex(p => p.PhoneNumber).IsUnique();
 
+            // varchar em vez de longtext: o MySQL não indexa longtext sem prefixo.
+            // A unicidade do nome segue a collation da coluna (no padrão do MySQL 8, ignora
+            // maiúsculas e acentos: "Corte" e "córte" são considerados iguais).
+            modelBuilder.Entity<Service>().Property(s => s.Name).HasMaxLength(Service.NameMaxLength);
+            modelBuilder.Entity<Service>().Property(s => s.Description).HasMaxLength(Service.DescriptionMaxLength);
+            modelBuilder.Entity<Service>().HasIndex(s => s.Name).IsUnique();
+
             // Exclusão lógica: profissionais desativados somem das consultas.
             // Use IgnoreQueryFilters() quando o histórico for necessário.
             // Como Professional é o lado obrigatório de OpeningHours e ProfessionalServiceOffering,

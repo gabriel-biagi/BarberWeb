@@ -48,6 +48,7 @@ O sistema está sendo construído para permitir que uma barbearia gerencie profi
 ### Implementado no código
 
 - Endpoints de profissionais para listar, consultar por ID, cadastrar e desativar (exclusão lógica permanente, com cancelamento automático dos agendamentos futuros após confirmação).
+- Endpoints do catálogo de serviços para listar, consultar por ID, cadastrar e editar. Não há exclusão de serviço por enquanto.
 - Entidades de domínio para clientes, profissionais, serviços, ofertas de serviços, horários de funcionamento e agendamentos.
 - Associação entre profissional e serviço por meio de `ProfessionalServiceOffering`, com preço e duração próprios para cada combinação.
 - Modelagem de horários semanais por profissional, permitindo mais de um bloco de funcionamento no mesmo dia.
@@ -59,7 +60,7 @@ O sistema está sendo construído para permitir que uma barbearia gerencie profi
 
 ### Ainda não implementado como fluxo completo
 
-- Endpoints e casos de uso para clientes, serviços, ofertas e horários de funcionamento.
+- Endpoints e casos de uso para clientes, ofertas e horários de funcionamento.
 - Endpoint para consultar horários disponíveis.
 - Criação de agendamentos com validação completa de expediente, horários passados e conflitos.
 - Remarcação de agendamentos e cancelamento solicitado por cliente ou profissional (hoje só existe o cancelamento automático causado pela desativação de um profissional).
@@ -132,7 +133,7 @@ MySQL
 - `Professional` e `Customer`: nome entre 3 e 60 caracteres e email entre 5 e 60 caracteres.
 - `Professional`: telefone normalizado para dígitos e validado com 10 a 15 dígitos.
 - `Customer`: telefone validado com 10 a 15 caracteres, sem a mesma normalização aplicada a `Professional`.
-- `Service`: nome entre 3 e 60 caracteres e descrição entre 5 e 200 caracteres.
+- `Service`: nome entre 3 e 60 caracteres e descrição entre 5 e 100 caracteres, validados na criação e na edição (`Update`). O nome é único.
 - `ProfessionalServiceOffering`: preço entre `0.01` e `9999.99` e duração maior que zero.
 - `OpeningHours`: horário final deve ser posterior ao horário inicial.
 - `SchedulingHours`: instante final deve ser posterior ao instante inicial. `Cancel` registra o instante e o motivo, e recusa cancelar um agendamento já cancelado.
@@ -218,13 +219,15 @@ O cliente deverá informar a data e o horário no contexto local da barbearia. O
 
 - **ORM:** Entity Framework Core 8.
 - **Banco de dados:** MySQL, usando `Pomelo.EntityFrameworkCore.MySql`.
-- **Migrations:** `InitialMigration`, `AddUniqueIndexesOnProfessional` e `AddProfessionalSoftDeleteAndAppointmentCancellation`.
+- **Migrations:** `InitialMigration`, `AddUniqueIndexesOnProfessional`, `AddProfessionalSoftDeleteAndAppointmentCancellation` e `AddServiceCatalogConstraints`.
+- **Migration do catálogo de serviços (`AddServiceCatalogConstraints`):** troca `Services.Name` para `varchar(60)` e `Services.Description` para `varchar(100)` e cria o índice único `IX_Services_Name`. Os valores que já estiverem no banco precisam caber nesses limites e ter nomes distintos (comparados sem diferenciar maiúsculas e acentos); caso contrário, a migration falha. Aplique com `dotnet ef database update`.
 - **Aplicar a migration da exclusão lógica:** ela adiciona `Professionals.DeletedAt`, `Appointments.CanceledAt` e `Appointments.CancellationReason` e troca as duas FKs de `Professional` para `Restrict`. Execute `dotnet ef database update` (veja [Configuração e execução](#configuração-e-execução)) antes de usar a API; sem isso, as consultas de profissionais falham porque a coluna `DeletedAt` não existe no banco.
 - **Tabelas criadas pela migration inicial:** `Customers`, `Professionals`, `Services`, `OpeningHours`, `ProfessionalOfferings` e `Appointments`.
 
 ### Índices de unicidade
 
 - `Professionals`: índices únicos para `Email` e `PhoneNumber`.
+- `Services`: índice único para `Name`. A coluna usa a collation `utf8mb4_0900_ai_ci`, que ignora maiúsculas e acentos: "Corte", "corte" e "Córte" são considerados o mesmo nome (409).
 - `Appointments`: índice único composto por `(ProfessionalId, StartDate, EndDate)`.
 
 O índice de `Appointments` impede que dois registros tenham a mesma combinação de profissional, início e fim. **Ele não impede toda e qualquer sobreposição de intervalos.** A regra de sobreposição exige uma validação própria, além de tratamento de concorrência na gravação.
@@ -265,14 +268,16 @@ Os agendamentos cancelados **não são apagados**: recebem `CanceledAt` e `Cance
 - `Professional` possui um filtro global (`DeletedAt == null`): `GetById` e `GetAll` não retornam desativados. Para consultar histórico, use `IgnoreQueryFilters()`.
 - `Professional` é o lado obrigatório de `OpeningHours` e `ProfessionalServiceOffering`. O EF registra o aviso `10622` na inicialização (filtro global em relação obrigatória). Na prática, consultas que fazem `Include` de `Professional` não retornam registros de profissionais desativados, então a disponibilidade de um desativado é uma lista vazia, sem erro.
 - As FKs `OpeningHours → Professionals` e `ProfessionalOfferings → Professionals` usam `Restrict`: a exclusão física de um profissional com horários ou ofertas é recusada pelo banco.
-- As demais FKs continuam com `Cascade` (`ProfessionalOfferings → Services`, `Appointments → Customers`, `Appointments → ProfessionalOfferings`). **Risco conhecido:** excluir fisicamente um `Customer` ou um `Service` apaga agendamentos em cascata. Hoje não há endpoints para isso. Quando existirem, será necessária uma decisão específica, considerando que o profissional deve ser avisado e que o horário deixa de ficar ocupado.
+- As demais FKs continuam com `Cascade` (`ProfessionalOfferings → Services`, `Appointments → Customers`, `Appointments → ProfessionalOfferings`). **Risco conhecido:** excluir fisicamente um `Customer` ou um `Service` apaga agendamentos em cascata. Hoje não há endpoints para isso (o catálogo de serviços foi criado sem exclusão justamente por esse motivo). Quando existirem, será necessária uma decisão específica, considerando que o profissional deve ser avisado e que o horário deixa de ficar ocupado.
 - O erro de FK do MySQL (código `1451`) ainda não é mapeado para `Result`/422. Se for implementado, deve ser registrado em log.
 
 ---
 
 ## API
 
-A rota do controller atual é `/api/professional` (o roteamento do ASP.NET Core não diferencia maiúsculas de minúsculas).
+As rotas dos controllers atuais são `/api/professional` e `/api/service` (o roteamento do ASP.NET Core não diferencia maiúsculas de minúsculas).
+
+### Profissionais
 
 | Método | Rota | Descrição | Respostas documentadas |
 |---|---|---|---|
@@ -290,6 +295,24 @@ Exemplo de corpo:
   "name": "Ana Souza",
   "email": "ana@email.com",
   "phoneNumber": "11955554444"
+}
+```
+
+### Serviços (catálogo)
+
+| Método | Rota | Descrição | Respostas documentadas |
+|---|---|---|---|
+| `GET` | `/api/service` | Lista os serviços, ordenados por nome | `200` |
+| `GET` | `/api/service/{id}` | Busca um serviço por ID | `200`, `400`, `404` |
+| `POST` | `/api/service` | Cadastra um serviço | `201`, `400`, `409` |
+| `PUT` | `/api/service/{id}` | Substitui nome e descrição do serviço (ambos obrigatórios) | `200`, `400`, `404`, `409` |
+
+O corpo do `POST` e do `PUT` recebe `name` (3 a 60 caracteres) e `description` (5 a 100 caracteres). A resposta contém `id`, `name` e `description`. Nome repetido, inclusive com diferença só de maiúsculas ou acentos, retorna `409`. Não existe `DELETE`: a política de exclusão de `Service` ainda está pendente (veja [Filtro global e integridade referencial](#filtro-global-e-integridade-referencial)). O serviço não guarda preço nem duração; esses dados ficam na oferta de cada profissional.
+
+```json
+{
+  "name": "Corte",
+  "description": "Corte masculino com tesoura e máquina"
 }
 ```
 
@@ -348,12 +371,14 @@ No cadastro de profissional, uma violação de índice único do MySQL (código 
 - [x] Implementações EF Core dos repositórios.
 - [x] Cálculo inicial de disponibilidade em `AvailableHoursService`.
 - [x] Controller, DTOs e tratamento de erros de `Professional`.
+- [x] Controller, DTOs e casos de uso do catálogo de serviços (`Service`), sem exclusão.
 - [x] Testes unitários da entidade `Professional`.
 
 ### Próximas implementações
 
 - [ ] Atualizar os testes de `ProfessionalService` para o contrato atual de `Result<T>`.
-- [ ] Criar controllers e DTOs para clientes, serviços, ofertas e horários de funcionamento.
+- [ ] Criar controllers e DTOs para clientes, ofertas e horários de funcionamento.
+- [ ] Aplicar no banco a migration `AddServiceCatalogConstraints` (índice único em `Services.Name`, colunas `varchar(60)` e `varchar(100)`).
 - [ ] Expor o endpoint de consulta de horários disponíveis.
 - [x] Corrigir a busca de agendamentos por sobreposição e comparar intervalos completos, sem descartar a data.
 - [ ] Filtrar horários que já passaram.
